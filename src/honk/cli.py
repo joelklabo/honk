@@ -6,8 +6,11 @@ import typer
 from . import result
 from . import registry
 from .internal.doctor import register_pack, global_pack, run_all_packs
+from .auth import ensure_gh_auth, ensure_az_auth
 
 app = typer.Typer(add_completion=False)
+auth_app = typer.Typer()
+app.add_typer(auth_app, name="auth")
 
 # Register built-in doctor packs
 register_pack(global_pack)
@@ -87,6 +90,22 @@ def doctor(
     except Exception as e:
         print(f"Error running doctor packs: {e}", file=sys.stderr)
         sys.exit(result.EXIT_BUG)
+
+
+@auth_app.command("ensure-gh")
+def auth_ensure_gh():
+    """Ensure GitHub authentication is configured."""
+    success, message = ensure_gh_auth()
+    print(message)
+    sys.exit(result.EXIT_OK if success else result.EXIT_NEEDS_AUTH)
+
+
+@auth_app.command("ensure-az")
+def auth_ensure_az():
+    """Ensure Azure DevOps authentication is configured."""
+    success, message = ensure_az_auth()
+    print(message)
+    sys.exit(result.EXIT_OK if success else result.EXIT_NEEDS_AUTH)
 
 
 # Register built-in commands for introspection
