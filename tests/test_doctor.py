@@ -65,9 +65,12 @@ def test_doctor_command_json():
     assert result.exit_code in [0, 10]
 
     data = json.loads(result.stdout)
-    assert "packs" in data
-    assert len(data["packs"]) > 0
-    assert data["packs"][0]["pack"] == "global"
+    # Now returns result envelope
+    assert "version" in data
+    assert data["version"] == "1.0"
+    assert "pack_results" in data
+    assert len(data["pack_results"]) > 0
+    assert data["pack_results"][0]["pack"] == "global"
 
 
 def test_doctor_command_plan():

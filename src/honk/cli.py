@@ -124,25 +124,46 @@ def doctor(
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Run doctor packs to check prerequisites."""
+    import uuid
     try:
         pack_results = run_all_packs(plan=plan)
+        
+        # Determine overall status
+        has_failure = any(pr.status == "failed" for pr in pack_results)
+        overall_status = "prereq_failed" if has_failure else "ok"
+        exit_code = result.EXIT_PREREQ_FAILED if has_failure else result.EXIT_OK
 
         if json_output:
-            output = {"packs": [pr.model_dump() for pr in pack_results]}
-            print(json.dumps(output, indent=2))
+            envelope = result.ResultEnvelope(
+                command=["honk", "doctor"],
+                status=overall_status,
+                code=f"doctor.{overall_status}",
+                summary=f"Ran {len(pack_results)} doctor pack(s)",
+                run_id=str(uuid.uuid4()),
+                duration_ms=sum(pr.duration_ms for pr in pack_results),
+                facts={
+                    "total_packs": len(pack_results),
+                    "passed_packs": sum(1 for pr in pack_results if pr.status == "ok"),
+                    "failed_packs": sum(1 for pr in pack_results if pr.status == "failed"),
+                },
+                pack_results=[pr.model_dump() for pr in pack_results] if hasattr(pack_results[0], 'model_dump') else pack_results,
+            )
+            print(envelope.model_dump_json(indent=2))
         else:
             for pr in pack_results:
-                status_icon = "✓" if pr.status == "ok" else "✗"
-                print(f"{status_icon} {pr.pack}: {pr.summary} ({pr.duration_ms}ms)")
+                if pr.status == "ok":
+                    print_success(f"{pr.pack}: {pr.summary} ({pr.duration_ms}ms)")
+                else:
+                    print_error(f"{pr.pack}: {pr.summary} ({pr.duration_ms}ms)")
                 for check in pr.checks:
-                    check_icon = "  ✓" if check.passed else "  ✗"
-                    print(f"{check_icon} {check.name}: {check.message}")
+                    if check.passed:
+                        console.print(f"  ✓ {check.name}: {check.message}")
+                    else:
+                        console.print(f"  ✗ {check.name}: {check.message}")
                     if check.remedy:
-                        print(f"    → {check.remedy}")
+                        print_dim(f"    → {check.remedy}")
 
-        # Exit with error if any pack failed
-        if any(pr.status == "failed" for pr in pack_results):
-            sys.exit(result.EXIT_PREREQ_FAILED)
+        sys.exit(exit_code)
 
     except Exception as e:
         print(f"Error running doctor packs: {e}", file=sys.stderr)
