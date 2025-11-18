@@ -4,12 +4,12 @@ import sys
 import json
 import os
 import typer
-from rich.console import Console
 
 from . import result
 from . import registry
 from .internal.doctor import register_pack, global_pack, run_all_packs
 from .auth import ensure_gh_auth, ensure_az_auth
+from .ui import console, print_success, print_error, print_warning, print_info, print_dim
 
 app = typer.Typer(add_completion=False)
 auth_app = typer.Typer()
@@ -34,6 +34,7 @@ def main_callback(
     """Honk CLI - Agent-first developer workflows."""
     if no_color or os.getenv("NO_COLOR"):
         # Disable Rich colors globally
+        from rich.console import Console
         Console._environ = {"TERM": "dumb"}
         os.environ["NO_COLOR"] = "1"
 
@@ -207,7 +208,7 @@ def demo_hello(
                 }
                 print(json.dumps(error, indent=2))
             else:
-                print("Prerequisites failed - run 'honk doctor' to diagnose")
+                print_error("Prerequisites failed - run 'honk doctor' to diagnose")
             sys.exit(result.EXIT_PREREQ_FAILED)
     except Exception as e:
         print(f"Error checking prerequisites: {e}", file=sys.stderr)
@@ -219,9 +220,9 @@ def demo_hello(
     if json_output:
         print(result_envelope.model_dump_json(indent=2))
     else:
-        print(f"{result_envelope.facts['greeting']}")
+        console.print(f"[emphasis]{result_envelope.facts['greeting']}[/emphasis]")
         if plan:
-            print("(Plan mode - no changes made)")
+            print_dim("(Plan mode - no changes made)")
 
     sys.exit(result.EXIT_OK)
 
