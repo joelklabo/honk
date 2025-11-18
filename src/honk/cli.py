@@ -2,7 +2,9 @@
 
 import sys
 import json
+import os
 import typer
+from rich.console import Console
 
 from . import result
 from . import registry
@@ -17,6 +19,23 @@ app.add_typer(demo_app, name="demo")
 
 # Register built-in doctor packs
 register_pack(global_pack)
+
+
+# Global callback to handle --no-color flag
+@app.callback()
+def main_callback(
+    no_color: bool = typer.Option(
+        False,
+        "--no-color",
+        help="Disable colored output",
+        envvar="HONK_NO_COLOR",
+    ),
+):
+    """Honk CLI - Agent-first developer workflows."""
+    if no_color or os.getenv("NO_COLOR"):
+        # Disable Rich colors globally
+        Console._environ = {"TERM": "dumb"}
+        os.environ["NO_COLOR"] = "1"
 
 
 @app.command()
