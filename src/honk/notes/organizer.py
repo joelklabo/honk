@@ -37,7 +37,7 @@ class AIOrganizer:
             )
             await proc.wait()
             if proc.returncode == 0:
-                return ("copilot", ["chat"])
+                return ("copilot", ["--prompt", "--allow-all-tools"])
         except FileNotFoundError:
             pass
 
@@ -113,8 +113,14 @@ class AIOrganizer:
         last_error = None
         for attempt in range(self.retry_max_attempts):
             try:
-                # Build command
-                cmd = [base_cmd] + args
+                # Build command based on CLI type
+                if base_cmd == "copilot":
+                    # Standalone CLI: copilot -p "text" --allow-all-tools
+                    cmd = [base_cmd, "-p", prompt, "--allow-all-tools"]
+                else:
+                    # Legacy gh extension: gh copilot suggest -t shell
+                    # Prompt goes via stdin
+                    cmd = [base_cmd] + args
 
                 # Execute
                 proc = await asyncio.create_subprocess_exec(
@@ -124,7 +130,11 @@ class AIOrganizer:
                     stderr=asyncio.subprocess.PIPE,
                 )
 
-                stdout, stderr = await proc.communicate(prompt.encode())
+                # Send prompt via stdin for gh extension, or just wait for standalone
+                if base_cmd == "copilot":
+                    stdout, stderr = await proc.communicate()
+                else:
+                    stdout, stderr = await proc.communicate(prompt.encode())
 
                 if proc.returncode != 0:
                     error_msg = stderr.decode().strip()
