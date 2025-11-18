@@ -11,6 +11,7 @@ import typer
 from ..result import EXIT_OK, EXIT_PREREQ_FAILED, EXIT_SYSTEM
 from ..ui import console, print_success, print_error, print_info
 from .pty_scanner import scan_ptys, kill_processes, get_heavy_users, get_suspected_leaks
+from ..log import log_event, LOG_FILE_PATH
 
 pty_app = typer.Typer(help="PTY session monitoring and cleanup")
 
@@ -40,7 +41,6 @@ def show(
         heavy_users = get_heavy_users(processes, threshold=4)
         suspected_leaks = get_suspected_leaks(processes, threshold=4)
         
-        # Build facts
         facts = {
             "total_ptys": total_ptys,
             "process_count": len(processes),
@@ -75,7 +75,6 @@ def show(
             )
             print(json.dumps(envelope, indent=2))
         else:
-            # Human-friendly output
             console.print("\n[bold cyan]PTY Usage[/bold cyan]\n")
             console.print(f"Total PTYs in use: [bold]{total_ptys}[/bold]")
             console.print(f"Processes holding PTYs: [bold]{len(processes)}[/bold]\n")
@@ -112,7 +111,6 @@ def clean(
 ):
     """Kill processes with orphaned PTY sessions."""
     try:
-        # Initial scan
         processes_before = scan_ptys()
         total_ptys_before = sum(p.pty_count for p in processes_before.values())
         suspected_leaks = get_suspected_leaks(processes_before, threshold=threshold)
@@ -125,18 +123,13 @@ def clean(
                     changed=False,
                     code="watchdog.pty.clean.none",
                     summary="No leaking processes found",
-                    facts={
-                        "before": {"total_ptys": total_ptys_before, "process_count": len(processes_before)},
-                        "killed": [],
-                        "freed_ptys": 0
-                    }
+                    facts={"before": {"total_ptys": total_ptys_before, "process_count": len(processes_before)}, "killed": [], "freed_ptys": 0}
                 )
                 print(json.dumps(envelope, indent=2))
             else:
                 print_info("No leaking processes found")
             sys.exit(EXIT_OK)
         
-        # Plan mode or actual cleanup
         if plan:
             if json_output:
                 envelope = build_result_envelope(
@@ -145,12 +138,7 @@ def clean(
                     changed=False,
                     code="watchdog.pty.clean.plan",
                     summary=f"Would kill {len(suspected_leaks)} processes",
-                    facts={
-                        "would_kill": [
-                            {"pid": p.pid, "command": p.command, "pty_count": p.pty_count}
-                            for p in suspected_leaks
-                        ]
-                    }
+                    facts={"would_kill": [{"pid": p.pid, "command": p.command, "pty_count": p.pty_count} for p in suspected_leaks]}
                 )
                 print(json.dumps(envelope, indent=2))
             else:
@@ -160,7 +148,6 @@ def clean(
                 console.print()
             sys.exit(EXIT_OK)
         
-        # Actually kill processes
         if interactive:
             pids_to_kill = []
             if not json_output:
@@ -177,21 +164,12 @@ def clean(
 
         kill_results = kill_processes(pids_to_kill)
         
-        # Rescan
-        time.sleep(0.5)  # Give processes time to die
+        time.sleep(0.5)
         processes_after = scan_ptys()
         total_ptys_after = sum(p.pty_count for p in processes_after.values())
         freed_ptys = total_ptys_before - total_ptys_after
         
-        killed_list = [
-            {
-                "pid": p.pid,
-                "command": p.command,
-                "pty_count": p.pty_count,
-                "success": kill_results.get(p.pid, False)
-            }
-            for p in suspected_leaks if p.pid in pids_to_kill
-        ]
+        killed_list = [{"pid": p.pid, "command": p.command, "pty_count": p.pty_count, "success": kill_results.get(p.pid, False)} for p in suspected_leaks if p.pid in pids_to_kill]
         
         if json_output:
             envelope = build_result_envelope(
@@ -200,12 +178,7 @@ def clean(
                 changed=True,
                 code="watchdog.pty.clean.ok",
                 summary=f"Killed {len(killed_list)} leaking processes, freed {freed_ptys} PTYs",
-                facts={
-                    "before": {"total_ptys": total_ptys_before, "process_count": len(processes_before)},
-                    "after": {"total_ptys": total_ptys_after, "process_count": len(processes_after)},
-                    "killed": killed_list,
-                    "freed_ptys": freed_ptys
-                }
+                facts={"before": {"total_ptys": total_ptys_before, "process_count": len(processes_before)}, "after": {"total_ptys": total_ptys_after, "process_count": len(processes_after)}, "killed": killed_list, "freed_ptys": freed_ptys}
             )
             print(json.dumps(envelope, indent=2))
         else:
@@ -231,17 +204,7 @@ def send_notification(title, message):
     try:
         subprocess.run(['osascript', '-e', f'display notification "{message}" with title "{title}"'])
     except FileNotFoundError:
-        # osascript not available on this system
         pass
-
-def log_event(log_file, event_data):
-    """Append a JSON object to a log file."""
-    if log_file:
-        try:
-            with open(log_file, "a") as f:
-                f.write(json.dumps(event_data) + "\n")
-        except IOError as e:
-            print_error(f"Failed to write to log file {log_file}: {e}")
 
 
 @pty_app.command("watch")
@@ -250,13 +213,9 @@ def watch(
     max_ptys: int = typer.Option(200, "--max-ptys", help="Auto-clean threshold"),
     json_output: bool = typer.Option(False, "--json", help="Stream JSON events"),
     notify: bool = typer.Option(False, "--notify", help="Send a system notification on cleanup."),
-    log_file: str = typer.Option(None, "--log-file", help="Path to a file for logging cleanup events."),
 ):
     """Monitor PTY usage and auto-clean when thresholds are exceeded."""
     try:
-        cleanup_count = 0
-        scan_count = 0
-        
         def signal_handler(sig, frame):
             if not json_output:
                 console.print("\n[bold]Stopping watch...[/bold]")
@@ -271,7 +230,6 @@ def watch(
         while True:
             processes = scan_ptys()
             total_ptys = sum(p.pty_count for p in processes.values())
-            scan_count += 1
             
             if json_output:
                 event = {"event": "scan", "total_ptys": total_ptys, "process_count": len(processes)}
@@ -283,12 +241,10 @@ def watch(
                 if total_ptys > max_ptys:
                     console.print(f"{status_line}  [bold red]!! HIGH — cleaning…[/bold red]")
                     
-                    # Trigger cleanup
                     suspected_leaks = get_suspected_leaks(processes, threshold=4)
                     if suspected_leaks:
                         pids_to_kill = [p.pid for p in suspected_leaks]
                         kill_processes(pids_to_kill)
-                        cleanup_count += 1
                         
                         time.sleep(0.5)
                         processes_after = scan_ptys()
@@ -299,15 +255,11 @@ def watch(
                         if notify:
                             send_notification("Honk PTY Watchdog", f"Killed {len(suspected_leaks)} processes, freed {freed} PTYs")
 
-                        if log_file:
-                            log_event(log_file, {
-                                "timestamp": time.time(),
-                                "action": "cleanup",
-                                "killed_count": len(suspected_leaks),
-                                "freed_ptys": freed,
-                                "killed_pids": pids_to_kill
-                            })
-
+                        log_event("pty_cleanup", {
+                            "killed_count": len(suspected_leaks),
+                            "freed_ptys": freed,
+                            "killed_pids": pids_to_kill
+                        })
                 else:
                     console.print(status_line)
             
@@ -323,18 +275,15 @@ def watch(
 
 @pty_app.command("history")
 def history(
-    log_file: str = typer.Option("~/.local/state/honk/pty_watchdog.log", "--log-file", help="Path to the log file."),
     limit: int = typer.Option(20, "--limit", help="Number of entries to show."),
 ):
     """Show a history of cleanup events from the log file."""
-    expanded_log_file = os.path.expanduser(log_file)
-    
-    if not os.path.exists(expanded_log_file):
-        print_info(f"Log file not found: {expanded_log_file}")
+    if not os.path.exists(LOG_FILE_PATH):
+        print_info(f"Log file not found: {LOG_FILE_PATH}")
         sys.exit(EXIT_OK)
         
     try:
-        with open(expanded_log_file, "r") as f:
+        with open(LOG_FILE_PATH, "r") as f:
             lines = f.readlines()
             
         entries = []
@@ -342,18 +291,23 @@ def history(
             if len(entries) >= limit:
                 break
             try:
-                entries.append(json.loads(line))
-            except json.JSONDecodeError:
-                # Ignore malformed lines
+                log_entry = json.loads(line)
+                data_str = log_entry.get("data")
+                if data_str:
+                    data = json.loads(data_str)
+                    if data.get("event_type") == "pty_cleanup":
+                        data['timestamp'] = log_entry.get("timestamp")
+                        entries.append(data)
+            except (json.JSONDecodeError, KeyError):
                 pass
         
         if not entries:
-            print_info("No history found in log file.")
+            print_info("No PTY cleanup history found in log file.")
             sys.exit(EXIT_OK)
             
         console.print("\n[bold cyan]PTY Cleanup History[/bold cyan]\n")
         for entry in entries:
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(entry.get("timestamp")))
+            timestamp = entry.get("timestamp")
             killed_count = entry.get("killed_count", 0)
             freed_ptys = entry.get("freed_ptys", 0)
             console.print(f"[{timestamp}] Killed {killed_count} processes, freed {freed_ptys} PTYs")
