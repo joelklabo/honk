@@ -46,6 +46,33 @@
 - Check `docs/plans/` for project planning documents
 - Check `docs/references/` for reference documentation
 
+### ⚠️ CRITICAL: CLI Tool Distinction
+
+**`gh` is NOT the same as `copilot`** - These are two completely different CLI tools:
+
+- **`gh`** - Official GitHub CLI for repository/issue/PR management
+  - Command: `gh` (e.g., `gh pr list`, `gh issue create`)
+  - Purpose: Interact with GitHub API (repos, issues, PRs, workflows, etc.)
+  - Install: `brew install gh` or similar
+  - Auth: `gh auth login`
+  
+- **`copilot`** - GitHub Copilot CLI for AI-powered command suggestions
+  - Command: `copilot` (standalone, NOT `gh copilot`)
+  - Purpose: AI assistance for terminal commands and explanations
+  - Install: Separate installation (not part of `gh`)
+  - Usage: `copilot suggest`, `copilot explain`
+
+**Common Mistake:**
+- ❌ `gh copilot --agent planloop` - This does NOT exist
+- ❌ `gh copilot suggest` - Wrong, `copilot` is not a `gh` subcommand
+- ✅ `copilot suggest "install git"` - Correct standalone usage
+- ✅ `gh pr list` - Correct GitHub CLI usage
+
+**When to use which:**
+- Use `gh` for GitHub API operations (repos, issues, PRs, auth)
+- Use `copilot` for AI command suggestions and explanations
+- These tools do NOT interact with each other
+
 ## Project Context
 
 - **Goal:** Honk is an agent-first CLI that standardizes automation flows (doctor packs, auth, tooling). The first shipping tool is `honk demo hello`, which exercises the shared scaffolding.
@@ -649,6 +676,12 @@ uv run pytest --cov=src/honk --cov-report=term-missing
 ### Known Issues & Solutions
 
 *(Add learnings here as you encounter and solve problems)*
+
+#### Issue: Confusing `gh` with `copilot` CLI tools
+**Solution**: `gh` and `copilot` are DIFFERENT tools. `gh` is GitHub CLI for API operations. `copilot` is standalone AI assistant CLI. Commands like `gh copilot` or `gh copilot --agent` do NOT exist.
+**Reference**: See `docs/references/cli-tools-reference.md` for complete distinction guide
+**When**: Working with GitHub authentication or trying to invoke AI assistance
+**Time saved**: ~15 minutes per occurrence
 
 #### Issue: Import errors with new modules
 **Solution**: Always add `__init__.py` files and update `pyproject.toml` if adding new packages
