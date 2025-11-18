@@ -9,13 +9,25 @@ from . import result
 from . import registry
 from .internal.doctor import register_pack, global_pack, run_all_packs
 from .auth import ensure_gh_auth, ensure_az_auth
-from .ui import console, print_success, print_error, print_warning, print_info, print_dim
+from .auth.cli import gh_app, az_app
+from .watchdog.pty_cli import pty_app
+from .ui import console, print_success, print_error, print_info, print_dim
 
 app = typer.Typer(add_completion=False)
 auth_app = typer.Typer()
 demo_app = typer.Typer()
+watchdog_app = typer.Typer()
+
+# Add auth sub-apps
+auth_app.add_typer(gh_app, name="gh", help="GitHub authentication")
+auth_app.add_typer(az_app, name="az", help="Azure DevOps authentication")
+
+# Add watchdog sub-apps
+watchdog_app.add_typer(pty_app, name="pty", help="PTY session monitoring")
+
 app.add_typer(auth_app, name="auth")
 app.add_typer(demo_app, name="demo")
+app.add_typer(watchdog_app, name="watchdog", help="System health monitoring")
 
 # Register built-in doctor packs
 register_pack(global_pack)
@@ -135,6 +147,16 @@ def doctor(
         exit_code = result.EXIT_PREREQ_FAILED if has_failure else result.EXIT_OK
 
         if json_output:
+            # Convert doctor PackResults to result envelope PackResults
+            envelope_pack_results = [
+                result.PackResult(
+                    pack=pr.pack,
+                    status=pr.status,
+                    duration_ms=pr.duration_ms
+                )
+                for pr in pack_results
+            ]
+            
             envelope = result.ResultEnvelope(
                 command=["honk", "doctor"],
                 status=overall_status,
@@ -147,7 +169,7 @@ def doctor(
                     "passed_packs": sum(1 for pr in pack_results if pr.status == "ok"),
                     "failed_packs": sum(1 for pr in pack_results if pr.status == "failed"),
                 },
-                pack_results=[pr.model_dump() for pr in pack_results] if hasattr(pack_results[0], 'model_dump') else pack_results,
+                pack_results=envelope_pack_results,
             )
             print(envelope.model_dump_json(indent=2))
         else:
