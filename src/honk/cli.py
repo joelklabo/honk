@@ -16,6 +16,10 @@ from .notes.cli import notes_app
 from .ui import console, print_success, print_error, print_info, print_dim
 
 app = typer.Typer(add_completion=False)
+
+# Register release tool
+from . import release as release_module
+release_module.register(app)
 auth_app = typer.Typer()
 demo_app = typer.Typer()
 watchdog_app = typer.Typer()

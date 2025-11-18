@@ -13,18 +13,8 @@ def register(app):
     
     Args:
         app: The main Typer application
-        
-    Returns:
-        AreaMetadata describing the release area
     """
     from . import cli
-    from honk.registry import AreaMetadata
     
     # Add release commands to main app
     app.add_typer(cli.app, name="release", help="Release automation tools")
-    
-    return AreaMetadata(
-        name="release",
-        description="AI-powered release automation with human oversight",
-        version="0.1.0"
-    )
