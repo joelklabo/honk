@@ -61,6 +61,38 @@
 - Tooling: pytest 8.3.3, pytest-xdist 3.6.1, ruff 0.6.9, mypy 1.11.2, nox 2024.4.15, pre-commit hooks.
 - System CLIs: `gh` ≥ 2.58.0, `az` ≥ 2.63.0 (with DevOps extension), Node.js 20.13.1 via Volta when the optional Next.js site comes online.
 
+### Python Environment Standards (MANDATORY)
+
+**⚠️ CRITICAL: Always use `uv` for ALL Python operations in this project.**
+
+**DO:**
+```bash
+✅ uv run python script.py          # Run Python scripts
+✅ uv run pytest                     # Run tests
+✅ uv run pytest tests/notes/ -v    # Run specific tests
+✅ uv run mypy src/                  # Type checking
+✅ uv run ruff check src/            # Linting
+✅ uv pip install package            # Install dependencies
+✅ uv sync                           # Sync environment
+```
+
+**DON'T:**
+```bash
+❌ python3 script.py                # Wrong - bypasses uv environment
+❌ pytest                           # Wrong - might use wrong env
+❌ pip install package              # Wrong - installs outside uv
+❌ python -m pytest                 # Wrong - not using uv
+```
+
+**Why This Matters:**
+- Ensures consistent Python version (3.12.2)
+- Uses pinned dependencies from `uv.lock`
+- Avoids environment conflicts
+- Reproducible builds and tests
+- Works identically on all machines
+
+**Exception:** The installed `honk` command itself doesn't need `uv run` because it's installed as a tool via `uv tool install`. But for development tasks (testing, linting, scripts), always use `uv run`.
+
 ### Architecture Overview
 
 **CLI Structure:**
@@ -118,6 +150,555 @@
 - Update `docs/spec.md` when changing architecture, dependencies, or process expectations, and log the decision in `docs/plans/main.md`.
 - Keep lint/type/test suites passing locally (`uv run ruff check`, `uv run mypy`, `uv run pytest`) before sending changes upstream.
 
+### Development Workflow (TDD Cycle)
+
+**ALWAYS follow Test-Driven Development - Test first, implementation second, never the reverse.**
+
+#### Phase 1: Write Failing Test (🔴 RED)
+
+**NEVER write implementation code before the test fails.**
+
+**Test Requirements:**
+- Test must be specific to the task
+- Test must fail for the right reason (not syntax error)
+- Test must be clear and readable
+- Test name describes expected behavior
+
+**Python/pytest Pattern:**
+```python
+def test_feature_specific_behavior():
+    """Should do X when Y happens."""
+    # Arrange - Set up test conditions
+    sut = SystemUnderTest()
+    test_input = "example"
+    
+    # Act - Execute the behavior
+    result = sut.perform_action(test_input)
+    
+    # Assert - Verify expectations
+    assert result == expected_value
+    assert result.status == "success"
+```
+
+**Run test to confirm failure:**
+```bash
+uv run pytest -k "test_feature_specific_behavior" -v
+```
+
+**Verify:**
+- ✅ Test runs without syntax errors
+- ✅ Test fails with clear error message
+- ✅ Failure is for expected reason (feature not implemented)
+- ✅ Error message makes sense
+
+**Document the failure output** - you'll compare after implementation.
+
+**Optional but recommended:** Commit the failing test
+```bash
+git add tests/
+git commit -m "test(feature): add failing test for specific behavior
+
+- Tests that [expected behavior]
+- Currently fails with: [error message]
+- Will implement in next commit
+
+Related to: [Task ID]"
+```
+
+#### Phase 2: Implement Solution (✅ GREEN)
+
+**Write MINIMAL code to make the test pass.**
+
+**Principles:**
+- Write simplest code that works
+- Don't over-engineer or add features not tested
+- Follow existing project patterns
+- Make test pass, nothing more
+
+**Run test until it passes:**
+```bash
+uv run pytest -k "test_feature_specific_behavior" -v
+```
+
+**If test continues failing after attempts:**
+- **Attempt 1**: Debug implementation and test logic
+- **Attempt 2**: Try different implementation approach
+- **Attempt 3**: Document issue and escalate (see Failure Handling)
+
+#### Phase 3: Refactor (🔵 BLUE)
+
+**Now that test passes, improve code quality:**
+- Extract duplicated code into functions/classes
+- Improve variable and function naming
+- Add comments for complex logic
+- Optimize performance if needed
+- Check for edge cases and add tests
+
+**CRITICAL: Run tests after EVERY refactor step**
+```bash
+uv run pytest -k "test_feature" -v  # After each change
+```
+
+If test fails during refactor, you broke something - revert and try smaller change.
+
+#### Phase 4: Verify Full Suite
+
+**Run complete test suite to ensure no regressions:**
+```bash
+uv run pytest  # All tests
+uv run pytest --cov=src/honk --cov-report=term-missing  # With coverage
+```
+
+**Check:**
+- ✅ Your new test passes
+- ✅ All existing tests still pass
+- ⚠️ If existing tests fail: You broke something - fix it
+
+#### Phase 5: Self-Reflection (🤔 REFLECT)
+
+**Before committing, answer these questions:**
+
+**Code Quality:**
+- ✅ Does code follow project style guide? (`uv run ruff check`)
+- ✅ Does code pass type checking? (`uv run mypy`)
+- ✅ Are variables/functions named clearly?
+- ✅ Is code DRY (Don't Repeat Yourself)?
+- ✅ Are there magic numbers/strings that should be constants?
+- ✅ Is error handling comprehensive?
+- ✅ Are complex sections commented?
+
+**Test Quality:**
+- ✅ Does test cover happy path?
+- ✅ Does test cover edge cases?
+- ✅ Does test cover error conditions?
+- ✅ Is test readable and maintainable?
+- ✅ Will test catch regressions?
+- ✅ Are test names descriptive?
+
+**Integration:**
+- ✅ Does this work with existing code?
+- ✅ Did I break any existing functionality?
+- ✅ Are there TODO comments I need to address?
+- ✅ Does this follow honk architecture patterns?
+- ✅ Does result envelope match schema?
+
+**Documentation:**
+- ✅ Are public CLI commands documented with help text?
+- ✅ Are docstrings present on public functions?
+- ✅ Did I update relevant docs in `docs/` if needed?
+- ✅ Should I add learnings to agents.md?
+
+**If ANY answer is NO: Fix before committing.**
+
+#### Phase 6: Commit (💾 COMMIT)
+
+Use **Conventional Commits** format (see Commit Message Standards section).
+
+**Complete example:**
+```bash
+git add .
+git commit -m "feat(release): add commit parser for conventional commits
+
+- Parse commit messages into type/scope/subject/body/footer
+- Support breaking change detection (BREAKING CHANGE:)
+- Handle multi-line commit bodies correctly
+- Add comprehensive error handling for malformed commits
+
+Tests:
+- test_parse_conventional_commit: ✅ passes
+- test_parse_breaking_change: ✅ passes
+- test_parse_multiline_body: ✅ passes
+- test_invalid_format_returns_error: ✅ passes
+- All existing tests: ✅ pass (48/48)
+
+Implementation approach:
+- Used regex for robust parsing
+- Followed existing honk result envelope pattern
+- Added validation helper functions
+- Extracted parsing logic into separate module
+
+Edge cases handled:
+- Missing scope (optional)
+- Empty commit body
+- Multiple BREAKING CHANGE markers
+- Invalid commit format
+
+Related to: Task #3 - Release Tool Foundation
+Time taken: 2.5 hours
+Complexity: Medium"
+
+git push origin main
+```
+
+#### Phase 7: Document (📝 DOCUMENT)
+
+**Update agents.md if you learned something valuable:**
+
+Add to "Known Issues & Solutions" section:
+```markdown
+#### Issue: [Problem description]
+**Solution**: [How you fixed it]
+**Example**: [Code snippet if helpful]
+**When to use**: [Context]
+**Time saved**: ~X minutes for next agent
+```
+
+**What to document:**
+- ✅ Problems that took >30 min to solve
+- ✅ Non-obvious errors and their solutions
+- ✅ Successful tool/library usage patterns
+- ✅ Architecture decisions and rationale
+- ✅ Performance optimizations
+- ✅ Security patterns discovered
+- ✅ Integration quirks with third-party code
+
+**Don't document:**
+- ❌ Obvious things (how to write a function)
+- ❌ One-off issues unlikely to recur
+- ❌ Implementation details (code is self-documenting)
+- ❌ Temporary workarounds you plan to fix
+
+#### Phase 8: Update Plan (✏️ UPDATE PLAN)
+
+**Mark task complete in docs/plans/main.md:**
+
+```markdown
+## Task: Implement Commit Parser
+**Status**: ✅ Done
+**Started**: 2025-11-18 10:00 AM
+**Completed**: 2025-11-18 12:30 PM
+**Assignee**: github-copilot
+**Time Taken**: 2.5 hours
+**Complexity**: Medium
+**Commit**: abc1234 - feat(release): add commit parser
+
+### Implementation Notes:
+- Used regex for parsing conventional commit format
+- Integrated with existing result envelope pattern
+- Added comprehensive error handling
+- All tests passing (48/48)
+
+### Challenges Encountered:
+- Multi-line body parsing required careful regex
+  - Solution: Used re.DOTALL flag
+- Breaking change detection across multiple formats
+  - Solution: Check both footer and body
+
+### Files Changed:
+- src/honk/tools/release/commit_parser.py (new)
+- tests/tools/release/test_commit_parser.py (new)
+
+### agents.md Updated: Yes
+- Added regex pattern for commit parsing
+- Documented re.DOTALL flag usage
+```
+
+#### TDD Cycle Summary
+
+```
+1. 🔴 RED - Write failing test
+   ↓
+2. ✅ GREEN - Implement minimum code to pass
+   ↓
+3. 🔵 BLUE - Refactor (test still passes)
+   ↓
+4. 🤔 REFLECT - Quality check
+   ↓
+5. 💾 COMMIT - Conventional commit message
+   ↓
+6. 📝 DOCUMENT - Update agents.md if learned something
+   ↓
+7. ✏️ UPDATE PLAN - Mark done in docs/plans/main.md
+   ↓
+8. 🔁 LOOP - Next task
+```
+
+**Remember:** TDD is non-negotiable. Test first, always.
+
+### Failure Handling & Recovery
+
+**When tests keep failing after implementation:**
+
+**Attempt 1 (15-30 min):** Debug normally
+- Check test logic is correct
+- Check implementation matches test expectations
+- Run test in isolation to rule out state pollution
+- Add print statements / use debugger
+- Check for typos in assertions
+
+**Attempt 2 (30-60 min):** Try different approach
+- Re-read task requirements carefully
+- Check for similar implementations in codebase
+- Search for existing patterns to follow
+- Review relevant documentation
+- Try alternate algorithm or data structure
+
+**Attempt 3 (Document & Escalate):** Don't spin indefinitely
+```markdown
+## Task: [Task Name]
+**Status**: ⚠️ Blocked
+**Attempts**: 3/3
+**Time Spent**: 4 hours
+**Issue**: Tests keep failing with [specific error]
+
+### What I Tried:
+1. [Approach 1] - Failed because [reason]
+   - Error: [error message]
+   - Hypothesis: [what you thought was wrong]
+   
+2. [Approach 2] - Failed because [reason]
+   - Error: [error message]
+   - Hypothesis: [what you thought was wrong]
+   
+3. [Approach 3] - Failed because [reason]
+   - Error: [error message]
+   - Hypothesis: [what you thought was wrong]
+
+### Current State:
+- Test: `test_feature_behavior` fails with: [error]
+- Implementation: [what's working, what's not]
+- Test passes: [which parts work]
+- Test fails: [which specific assertion fails]
+
+### Relevant Code:
+```python
+# Test that's failing
+def test_feature_behavior():
+    result = feature.do_thing()
+    assert result == expected  # ← Fails here
+```
+
+### Requesting Help:
+Need guidance on:
+- Should I try different architecture approach?
+- Is there a specialist agent who can help? (release-expert, python-testing-expert)
+- Should I revise task requirements?
+- Am I misunderstanding the expected behavior?
+```
+
+**Don't spin indefinitely.** After 3 genuine attempts (not quick tries), escalate.
+
+**When stuck on architecture decisions:**
+
+Pause and ask for architectural guidance rather than implementing incorrectly:
+```markdown
+## Architectural Decision Needed
+
+Task: [Task Name]
+Question: [Specific architectural question]
+
+Options I'm considering:
+1. **Option A**: [Description]
+   - Pros: [advantages]
+   - Cons: [disadvantages]
+   - Complexity: Low/Medium/High
+   
+2. **Option B**: [Description]
+   - Pros: [advantages]
+   - Cons: [disadvantages]
+   - Complexity: Low/Medium/High
+
+Context:
+- Existing patterns: [what project already does]
+- Performance requirements: [if any]
+- Integration points: [what this needs to work with]
+
+My recommendation: Option A because [reasoning]
+
+Should I proceed with Option A, or would you like to discuss?
+```
+
+**When task requirements are unclear:**
+
+Don't assume - ask for clarification:
+```markdown
+## Task Clarification Needed
+
+Task: [Task Name as written in plan]
+
+Ambiguities I've identified:
+1. [What's unclear or has multiple interpretations]
+2. [Missing requirements or edge case handling]
+3. [Unclear acceptance criteria]
+
+Questions:
+- Should this handle [edge case]?
+- What's expected behavior when [scenario]?
+- Are there performance requirements?
+- What error conditions should be handled?
+- Should this work with [related feature]?
+
+My interpretation: [What I think it means]
+Implementation impact: [How interpretation affects code]
+
+Please clarify before I proceed with implementation.
+```
+
+### Commit Message Standards
+
+Use **Conventional Commits** format:
+
+**Types:**
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `test:` - Adding/modifying tests
+- `refactor:` - Code restructure (no behavior change)
+- `docs:` - Documentation only
+- `chore:` - Build/tooling changes
+
+**Good commit example:**
+```
+feat(release): add commit parser for conventional commits
+
+- Parse commit messages into type/scope/subject/body
+- Support breaking change detection
+- Handle multi-line commit bodies
+- Add comprehensive error handling
+
+Tests:
+- test_parse_conventional_commit: ✅
+- test_parse_with_breaking_change: ✅
+- test_invalid_format_handling: ✅
+- All existing tests: ✅ pass (45/45)
+
+Implementation:
+- Used regex for robust parsing
+- Followed existing honk patterns
+- Added validation for commit format
+
+Related to: Task #3 - Release Tool Foundation
+Time: 2 hours
+```
+
+### Task Selection Strategy
+
+**Don't just pick the first incomplete task.** Use smart selection:
+
+1. **Dependency Check**: 
+   - ❌ Don't start Task 5 if it depends on incomplete Task 3
+   - ✅ Look for "Depends on:", "Blocked by:", or "Requires:" indicators
+
+2. **Value vs Complexity**:
+   - 🔥 High Value + Low Complexity → Do first (quick wins)
+   - ⚡ High Value + High Complexity → Do after quick wins
+   - 📝 Low Value + Low Complexity → Batch together
+   - ⚠️ Low Value + High Complexity → Lowest priority
+
+3. **Batch Related Work**: 
+   - If tasks 5, 6, 7 share code, implement foundation first
+   - Then tackle each specific task
+   - Commit per task (not all at once)
+
+4. **Skill Match**:
+   - If stuck after 3 attempts, document and escalate
+   - Don't spin indefinitely on blockers
+
+### Before Starting Any Task
+
+**Read and understand thoroughly:**
+1. Read related code files in project
+2. Understand existing patterns (check similar implementations)
+3. Review `docs/agents.md` for context
+4. Check git history: `git log --oneline --grep="<keyword>"`
+5. Look for TODO/FIXME comments: `rg "TODO|FIXME"`
+
+**Ask yourself:**
+- What is the actual problem being solved?
+- Why does this need implementation?
+- What are the edge cases?
+- How does this integrate with existing code?
+- What could go wrong?
+
+### Testing Best Practices (Python/pytest)
+
+**Test Structure:**
+```python
+def test_feature_behavior():
+    """Should do X when Y happens."""
+    # Arrange
+    sut = SystemUnderTest()
+    
+    # Act
+    result = sut.perform_action()
+    
+    # Assert
+    assert result == expected_value
+```
+
+**Running Tests:**
+```bash
+# Single test
+uv run pytest -k "test_name" -v
+
+# Test file
+uv run pytest tests/path/test_file.py -v
+
+# Full suite
+uv run pytest
+
+# With coverage
+uv run pytest --cov=src/honk --cov-report=term-missing
+```
+
+**Test Coverage Expectations:**
+- Core logic: >90% coverage
+- CLI commands: >80% coverage
+- Integration tests: Happy path + error cases
+- Contract tests: Validate result envelope schema
+
+### Known Issues & Solutions
+
+*(Add learnings here as you encounter and solve problems)*
+
+#### Issue: Import errors with new modules
+**Solution**: Always add `__init__.py` files and update `pyproject.toml` if adding new packages
+**When**: Creating new tool areas or shared utilities
+
+#### Issue: Tests passing locally but failing in CI
+**Solution**: Run `uv run pytest` (not just `pytest`) to ensure locked environment
+**When**: After adding new dependencies
+
+#### Issue: Typer command not showing in help
+**Solution**: Ensure command is registered via `app.command()` and area is loaded in `cli.py`
+**When**: Adding new commands to existing areas
+
+#### Issue: Result envelope validation fails
+**Solution**: Match schema exactly (`schemas/result.v1.json`). Use helper functions from `result.py`
+**When**: Creating new commands or modifying result structure
+
+### Self-Reflection Checklist
+
+**Before every commit, verify:**
+
+**Code Quality:**
+- ✅ Follows project style guide (ruff/mypy pass)
+- ✅ Variables/functions named clearly
+- ✅ No code duplication (DRY principle)
+- ✅ No magic numbers/strings (use constants)
+- ✅ Comprehensive error handling
+- ✅ Docstrings on public functions
+
+**Test Quality:**
+- ✅ Tests cover happy path
+- ✅ Tests cover edge cases
+- ✅ Tests cover error conditions  
+- ✅ Tests are readable and maintainable
+- ✅ Tests will catch regressions
+
+**Integration:**
+- ✅ Works with existing code
+- ✅ Didn't break existing functionality (run full test suite)
+- ✅ No new TODO/FIXME comments without issue tracking
+- ✅ Follows honk architecture patterns (result envelope, doctor packs, etc.)
+
+**Documentation:**
+- ✅ Complex sections have comments
+- ✅ Public CLI commands have help text
+- ✅ Updated relevant docs in `docs/` if needed
+- ✅ Added learnings to agents.md if applicable
+
+**If ANY answer is NO: Fix before committing.**
+
 ### Adding New Tools (Quick Reference)
 
 When implementing a new tool (e.g., `honk watchdog pty`):
@@ -162,6 +743,74 @@ When implementing a new tool (e.g., `honk watchdog pty`):
 - **docs/references/** - Reference documentation, research notes
 - **docs/agents.md** - This file (AI configuration)
 - **tmp/** - Temporary files and scratch work (gitignored)
+
+### Progress Reporting Template
+
+**After completing each task:**
+
+```
+📊 Progress Report - Task #X Complete
+
+Task: [Task Name]
+Status: ✅ Done
+Commit: [commit-hash]
+Time: X hours
+
+Test Results:
+- New tests added: X
+- Tests passing: X/X ✅
+- Coverage: XX% → XX% ⬆️/⬇️/➡️
+
+Code Changes:
+- Files added: X
+- Files modified: X
+- Lines added: ~XXX
+- Lines removed: ~XX
+
+Quality Checks:
+✅ Code follows style guide (ruff/mypy pass)
+✅ All tests pass
+✅ No linter warnings
+✅ agents.md updated (if learned something)
+✅ Self-reflection complete
+✅ docs/plans/main.md updated
+
+Next Task: #X - [Task Name]
+Estimated: X hours
+```
+
+### When to Update docs/plans/main.md
+
+**Always update after:**
+- Completing a task (mark done with commit hash)
+- Starting a new task (mark in progress with timestamp)
+- Getting blocked (document issue and attempts)
+- Making architectural decisions (document rationale)
+- Discovering new requirements (add to backlog)
+
+**Update format in main.md:**
+```markdown
+## Task: [Task Name]
+**Status**: ✅ Done / 🚧 In Progress / ⚠️ Blocked
+**Started**: 2025-11-18 10:00 AM
+**Completed**: 2025-11-18 12:30 PM (if done)
+**Assignee**: [agent name or "next agent"]
+**Time Taken**: 2.5 hours
+**Complexity**: Low / Medium / High
+**Commit**: abc1234 (if done)
+
+### Implementation Notes:
+- [Key decisions made]
+- [Patterns used]
+- [Challenges overcome]
+
+### Files Changed:
+- src/honk/... (added/modified)
+- tests/... (added/modified)
+
+### agents.md Updated: Yes/No
+[If yes, what was added]
+```
 
 ## Custom Agents
 

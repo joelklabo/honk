@@ -12,6 +12,7 @@ from .auth import ensure_gh_auth, ensure_az_auth
 from .auth.cli import gh_app, az_app
 from .watchdog.pty_cli import pty_app
 from .system_cli import system_app
+from .notes.cli import notes_app
 from .ui import console, print_success, print_error, print_info, print_dim
 
 app = typer.Typer(add_completion=False)
@@ -30,6 +31,7 @@ app.add_typer(auth_app, name="auth")
 app.add_typer(demo_app, name="demo")
 app.add_typer(watchdog_app, name="watchdog", help="System health monitoring")
 app.add_typer(system_app, name="system", help="System diagnostics suite")
+app.add_typer(notes_app, name="notes", help="AI-assisted note-taking 🤖")
 
 
 # Register built-in doctor packs

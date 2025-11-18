@@ -27,7 +27,18 @@
   - 20 watchdog tests passing
   - Spec available in `docs/references/watchdog-pty-spec.md`
 
-- **Next milestone**: Additional tools and GitHub Actions workflows
+- ✅ **Release tool** fully implemented (NEW - 2025-11-18):
+  - Semantic versioning with automatic bump detection
+  - Conventional commit parser and analyzer
+  - Changelog generation (traditional + AI-ready)
+  - Build system (PyPI packages, Homebrew formulae)
+  - Publishing (PyPI, GitHub Releases)
+  - CLI commands: `honk release {status,preview,patch,minor,major}`
+  - **34 tests passing** for release module
+  - Comprehensive documentation (user guide + technical spec)
+  - See: `docs/references/release-tool-guide.md`
+
+- **Next milestone**: GitHub Actions workflows, polish release tool AI integration
 
 ## Active Tasks
 
@@ -38,6 +49,8 @@
 - [x] Implement CLI design system (semantic tokens + Rich theme).
 - [x] Complete auth subsystem (GitHub + Azure DevOps).
 - [x] Implement watchdog PTY tool with tests.
+- [x] Implement release automation tool (2025-11-18).
+- [ ] Polish release tool AI integration (Copilot CLI).
 - [ ] Configure GitHub Actions workflows (`ci-core`, `ci-macos`, `docs-guard`, `release`).
 
 ## Completed Tasks
@@ -52,12 +65,38 @@
 - [x] Add comprehensive auth tests (2025-11-18)
 - [x] Implement watchdog PTY tool (2025-11-18)
 - [x] Add comprehensive watchdog tests (2025-11-18)
+- [x] **Implement release automation tool** (2025-11-18):
+  - [x] Module structure and Git operations
+  - [x] Conventional commit parser and analyzer
+  - [x] Version bumper with semantic versioning
+  - [x] CLI commands (status, preview, patch, minor, major)
+  - [x] Changelog generators (traditional + AI-ready)
+  - [x] Workflow orchestrator
+  - [x] PyPI builder and publisher
+  - [x] GitHub Releases publisher
+  - [x] Homebrew formula generator
+  - [x] Configuration system
+  - [x] 34 comprehensive tests
+  - [x] User guide and technical spec documentation
 
 ## Next Steps
 
-1. Configure GitHub Actions workflows (ci-core, ci-macos, docs-guard, release).
-2. Consider additional watchdog tools (GitHub Actions analyzer, resource monitors).
-3. Document usage patterns and examples for auth and watchdog tools.
+1. **Test and polish release tool**:
+   - Manual testing of `honk release` commands
+   - Complete AI integration (Copilot CLI)
+   - Add doctor pack for release prerequisites
+   - Test PyPI and GitHub publishing workflows
+
+2. **Configure GitHub Actions workflows**:
+   - `ci-core` - Main test suite
+   - `ci-macos` - Platform-specific tests
+   - `docs-guard` - Documentation validation
+   - `release` - Automated releases using `honk release`
+
+3. **Additional enhancements**:
+   - Consider additional watchdog tools (GitHub Actions analyzer, resource monitors)
+   - Document usage patterns and examples for auth and watchdog tools
+   - Add release tool to CI/CD pipeline
 
 ## Planned Tasks
 

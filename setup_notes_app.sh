@@ -1,0 +1,639 @@
+#!/bin/bash
+# Setup script for Honk Notes implementation
+# Run this from /Users/honk/code/honk
+
+set -e
+
+echo "🚀 Setting up Honk Notes..."
+
+# Create directory structure
+echo "📁 Creating directories..."
+mkdir -p src/honk/notes
+mkdir -p tests/notes/fixtures
+
+# Create __init__.py files
+echo "📝 Creating package files..."
+
+cat > src/honk/notes/__init__.py << 'EOF'
+"""Honk Notes - AI-assisted note-taking application."""
+
+from .app import StreamingNotesApp
+from .config import NotesConfig
+
+__all__ = ["StreamingNotesApp", "NotesConfig"]
+EOF
+
+cat > tests/notes/__init__.py << 'EOF'
+"""Tests for Honk Notes."""
+EOF
+
+# Create config.py
+cat > src/honk/notes/config.py << 'EOF'
+"""Configuration for Honk Notes application."""
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+
+@dataclass
+class NotesConfig:
+    """Configuration for notes application."""
+
+    # File management
+    file_path: Optional[Path] = None
+    auto_save: bool = True
+    auto_save_interval: float = 2.0  # seconds
+
+    # AI organization
+    idle_timeout: int = 30  # seconds
+    prompt_template: Optional[str] = None
+    enable_streaming: bool = True
+
+    # UI settings
+    show_line_numbers: bool = False
+    theme: str = "monokai"
+    language: str = "markdown"
+
+    # Advanced
+    max_undo_history: int = 100
+    enable_file_drop: bool = True
+
+    @classmethod
+    def load(cls, file_path: Optional[Path] = None) -> "NotesConfig":
+        """Load config from file or defaults."""
+        # TODO: Load from ~/.config/honk/notes.toml if exists
+        return cls(file_path=file_path)
+
+    def save(self, path: Optional[Path] = None) -> None:
+        """Save config to file."""
+        # TODO: Save to ~/.config/honk/notes.toml
+        pass
+EOF
+
+# Create prompts.py
+cat > src/honk/notes/prompts.py << 'EOF'
+"""AI prompt templates for note organization."""
+
+DEFAULT_ORGANIZE_PROMPT = """Organize the following notes into clear, structured sections.
+
+Guidelines:
+- Use markdown headers (##) for main sections
+- Group related items together logically
+- Add checkboxes [ ] for action items
+- Add > blockquotes for important notes
+- Preserve all original information
+- Make it more scannable and organized
+
+Notes to organize:
+{content}
+
+Return only the organized markdown, no explanations."""
+EOF
+
+# Create widgets.py
+cat > src/honk/notes/widgets.py << 'EOF'
+"""Custom widgets for Honk Notes application."""
+
+import asyncio
+import time
+from textual.widgets import TextArea, Static
+from textual.containers import Container
+from textual.reactive import reactive
+from textual.message import Message
+
+
+class IdleReached(Message):
+    """Emitted when editor has been idle for threshold time."""
+
+    def __init__(self, content: str) -> None:
+        self.content = content
+        super().__init__()
+
+
+class StreamingTextArea(TextArea):
+    """TextArea with idle detection and streaming updates."""
+
+    # Reactive properties
+    last_change = reactive(0.0)
+    idle_seconds = reactive(0)
+    is_updating = reactive(False)
+
+    def __init__(
+        self,
+        idle_timeout: int = 30,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.idle_timeout = idle_timeout
+        self._idle_watcher = None
+        self._update_lock = asyncio.Lock()
+
+    def on_mount(self) -> None:
+        """Start idle detection on mount."""
+        self._idle_watcher = asyncio.create_task(self._watch_idle())
+
+    def on_unmount(self) -> None:
+        """Clean up on unmount."""
+        if self._idle_watcher:
+            self._idle_watcher.cancel()
+
+    async def _watch_idle(self) -> None:
+        """Monitor idle time without polling."""
+        while True:
+            await asyncio.sleep(1)
+            if self.last_change > 0 and not self.is_updating:
+                elapsed = time.time() - self.last_change
+                self.idle_seconds = int(elapsed)
+
+                if elapsed >= self.idle_timeout:
+                    # Emit idle event
+                    self.post_message(IdleReached(self.text))
+                    self.last_change = 0  # Reset
+
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        """Track text changes."""
+        if not self.is_updating:
+            self.last_change = time.time()
+            self.idle_seconds = 0
+
+    async def apply_incremental_update(self, new_content: str) -> None:
+        """Apply new content with smooth incremental updates."""
+        async with self._update_lock:
+            self.is_updating = True
+            try:
+                await self._apply_diff(self.text, new_content)
+            finally:
+                self.is_updating = False
+                self.last_change = time.time()
+
+    async def _apply_diff(self, old: str, new: str) -> None:
+        """Apply diff incrementally for smooth visual update."""
+        # For MVP, just replace all content
+        # TODO: Implement line-by-line diff animation
+        self.text = new
+        await asyncio.sleep(0.1)  # Brief pause for visual feedback
+
+
+class ProcessingOverlay(Container):
+    """Floating progress indicator overlay."""
+
+    DEFAULT_CSS = """
+    ProcessingOverlay {
+        layer: overlay;
+        align: center middle;
+        width: 60;
+        height: 7;
+        background: $panel;
+        border: heavy $accent;
+        display: none;
+    }
+
+    ProcessingOverlay.visible {
+        display: block;
+    }
+
+    #progress-message {
+        text-align: center;
+        padding: 1;
+    }
+
+    #progress-bar {
+        text-align: center;
+        padding: 1;
+    }
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def compose(self):
+        yield Static("", id="progress-message")
+        yield Static("", id="progress-bar")
+
+    def show(self, message: str = "Processing...") -> None:
+        """Show overlay with initial message."""
+        self.add_class("visible")
+        msg_widget = self.query_one("#progress-message", Static)
+        msg_widget.update(f"[bold cyan]{message}[/]")
+
+    def update_progress(self, percent: float, message: str = None) -> None:
+        """Update progress bar."""
+        bar_length = 40
+        filled = int(bar_length * percent)
+        bar = "━" * filled + "╸" + "─" * (bar_length - filled - 1)
+
+        bar_widget = self.query_one("#progress-bar", Static)
+        bar_widget.update(f"{bar} {int(percent * 100)}%")
+
+        if message:
+            msg_widget = self.query_one("#progress-message", Static)
+            msg_widget.update(f"[bold cyan]{message}[/]")
+
+    def hide(self) -> None:
+        """Hide overlay."""
+        self.remove_class("visible")
+EOF
+
+# Create organizer.py
+cat > src/honk/notes/organizer.py << 'EOF'
+"""AI organization via GitHub Copilot CLI."""
+
+import asyncio
+from typing import AsyncIterator, Optional
+from .prompts import DEFAULT_ORGANIZE_PROMPT
+
+
+class AIOrganizer:
+    """Manages AI organization via GitHub Copilot CLI."""
+
+    def __init__(self, prompt_template: Optional[str] = None):
+        self.prompt_template = prompt_template or DEFAULT_ORGANIZE_PROMPT
+
+    async def organize(self, content: str) -> str:
+        """Organize content using GitHub Copilot CLI."""
+        prompt = self.prompt_template.format(content=content)
+
+        # Call GitHub Copilot CLI
+        proc = await asyncio.create_subprocess_exec(
+            "gh", "copilot", "suggest",
+            "-t", "shell",
+            prompt,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode != 0:
+            raise RuntimeError(f"Copilot CLI failed: {stderr.decode()}")
+
+        return stdout.decode().strip()
+
+    async def organize_stream(
+        self,
+        content: str
+    ) -> AsyncIterator[tuple[str, float]]:
+        """
+        Stream organized content incrementally.
+        Yields (partial_content, progress) tuples.
+        """
+        # For MVP, we'll simulate streaming by yielding full result
+        # TODO: Implement true streaming if Copilot CLI supports it
+        result = await self.organize(content)
+
+        # Simulate progressive reveal
+        lines = result.splitlines()
+        accumulated = []
+
+        for i, line in enumerate(lines):
+            accumulated.append(line)
+            progress = (i + 1) / len(lines)
+            yield ("\n".join(accumulated), progress)
+            await asyncio.sleep(0.05)  # Smooth animation
+EOF
+
+# Create auto_save.py
+cat > src/honk/notes/auto_save.py << 'EOF'
+"""Debounced auto-save functionality."""
+
+import asyncio
+from pathlib import Path
+from typing import Optional
+
+
+class AutoSaver:
+    """Debounced auto-save handler."""
+
+    def __init__(
+        self,
+        file_path: Path,
+        debounce_seconds: float = 2.0
+    ):
+        self.file_path = file_path
+        self.debounce_seconds = debounce_seconds
+        self._save_task: Optional[asyncio.Task] = None
+
+    async def schedule_save(self, content: str) -> None:
+        """Schedule a debounced save."""
+        if self._save_task:
+            self._save_task.cancel()
+
+        self._save_task = asyncio.create_task(
+            self._debounced_save(content)
+        )
+
+    async def _debounced_save(self, content: str) -> None:
+        """Wait debounce period and save."""
+        try:
+            await asyncio.sleep(self.debounce_seconds)
+            self.file_path.write_text(content)
+        except asyncio.CancelledError:
+            # New edit came in, this save was cancelled
+            pass
+
+    def save_now(self, content: str) -> None:
+        """Save immediately (synchronous)."""
+        self.file_path.write_text(content)
+EOF
+
+# Create app.py
+cat > src/honk/notes/app.py << 'EOF'
+"""Main Textual application for Honk Notes."""
+
+import asyncio
+from textual.app import App, ComposeResult
+from textual.widgets import Header, Footer, TextArea
+from textual.reactive import reactive
+from .widgets import StreamingTextArea, ProcessingOverlay, IdleReached
+from .organizer import AIOrganizer
+from .auto_save import AutoSaver
+from .config import NotesConfig
+
+
+class StreamingNotesApp(App):
+    """AI-assisted notes application."""
+
+    CSS = """
+    StreamingTextArea {
+        height: 100%;
+    }
+    """
+
+    BINDINGS = [
+        ("ctrl+s", "save", "Save"),
+        ("ctrl+o", "organize_now", "Organize Now"),
+        ("ctrl+q", "quit", "Quit"),
+    ]
+
+    organizing = reactive(False)
+
+    def __init__(self, config: NotesConfig):
+        super().__init__()
+        self.config = config
+        self.organizer = AIOrganizer(config.prompt_template)
+        self.auto_saver = None
+
+        if config.file_path and config.auto_save:
+            self.auto_saver = AutoSaver(
+                config.file_path,
+                config.auto_save_interval
+            )
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+
+        # Load initial content
+        initial_content = ""
+        if self.config.file_path and self.config.file_path.exists():
+            initial_content = self.config.file_path.read_text()
+
+        yield StreamingTextArea(
+            text=initial_content,
+            language=self.config.language,
+            theme=self.config.theme,
+            show_line_numbers=self.config.show_line_numbers,
+            idle_timeout=self.config.idle_timeout,
+            id="editor"
+        )
+        yield ProcessingOverlay(id="processing")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        """Set up title."""
+        filename = self.config.file_path.name if self.config.file_path else "Untitled"
+        self.title = f"Honk Notes - {filename}"
+        self.sub_title = f"Idle: 0s | Ctrl+O: Organize | Ctrl+S: Save"
+
+    async def on_streaming_text_area_idle_reached(
+        self,
+        message: IdleReached
+    ) -> None:
+        """Handle idle event from editor."""
+        if not self.organizing:
+            await self._organize_content(message.content)
+
+    async def action_organize_now(self) -> None:
+        """Manually trigger organization."""
+        if not self.organizing:
+            editor = self.query_one("#editor", StreamingTextArea)
+            await self._organize_content(editor.text)
+
+    async def _organize_content(self, content: str) -> None:
+        """Organize content with AI."""
+        if not content.strip():
+            return
+
+        self.organizing = True
+        editor = self.query_one("#editor", StreamingTextArea)
+        overlay = self.query_one("#processing", ProcessingOverlay)
+
+        try:
+            overlay.show("🤖 AI is organizing your notes...")
+
+            # Stream organized content
+            async for partial, progress in self.organizer.organize_stream(content):
+                overlay.update_progress(progress, "Organizing...")
+
+            # Apply final result
+            final_organized = partial
+            await editor.apply_incremental_update(final_organized)
+
+            overlay.update_progress(1.0, "✓ Done!")
+            await asyncio.sleep(0.5)
+
+        except Exception as e:
+            self.notify(f"Organization failed: {e}", severity="error")
+        finally:
+            overlay.hide()
+            self.organizing = False
+
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        """Handle text changes for auto-save."""
+        if self.auto_saver and not self.organizing:
+            asyncio.create_task(
+                self.auto_saver.schedule_save(event.text_area.text)
+            )
+
+    def action_save(self) -> None:
+        """Manually save file."""
+        if self.config.file_path:
+            editor = self.query_one("#editor", StreamingTextArea)
+            self.config.file_path.write_text(editor.text)
+            self.notify("✓ Saved", timeout=2)
+        else:
+            self.notify("No file specified", severity="warning")
+EOF
+
+# Create cli.py
+cat > src/honk/notes/cli.py << 'EOF'
+"""CLI commands for Honk Notes."""
+
+import typer
+from pathlib import Path
+from typing import Optional
+from .app import StreamingNotesApp
+from .config import NotesConfig
+from honk.ui import print_error, print_success, console
+
+notes_app = typer.Typer()
+
+
+@notes_app.command()
+def edit(
+    file: Optional[Path] = typer.Argument(
+        None,
+        help="File to edit (creates if doesn't exist)"
+    ),
+    idle_timeout: int = typer.Option(
+        30,
+        "--idle", "-i",
+        help="Seconds of idle time before AI organization"
+    ),
+    no_auto_save: bool = typer.Option(
+        False,
+        "--no-auto-save",
+        help="Disable auto-save"
+    ),
+    prompt: Optional[Path] = typer.Option(
+        None,
+        "--prompt", "-p",
+        help="Custom AI prompt template file"
+    ),
+):
+    """
+    Open AI-assisted notes editor.
+
+    Examples:
+        honk notes edit meeting.md
+        honk notes edit --idle 60 notes.md
+        honk notes edit --prompt custom.txt todo.md
+    """
+    # Load custom prompt if specified
+    prompt_template = None
+    if prompt:
+        if not prompt.exists():
+            print_error(f"Prompt file not found: {prompt}")
+            raise typer.Exit(1)
+        prompt_template = prompt.read_text()
+
+    # Create config
+    config = NotesConfig(
+        file_path=file,
+        idle_timeout=idle_timeout,
+        auto_save=not no_auto_save,
+        prompt_template=prompt_template,
+    )
+
+    # Run app
+    app = StreamingNotesApp(config)
+    app.run()
+
+
+@notes_app.command()
+def organize(
+    file: Path = typer.Argument(..., help="File to organize"),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Output file (default: overwrite input)"
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Print result without saving"
+    ),
+):
+    """
+    Organize notes file with AI (non-interactive).
+
+    Examples:
+        honk notes organize meeting.md
+        honk notes organize notes.md -o organized.md
+        honk notes organize --dry-run todo.md
+    """
+    import asyncio
+    from .organizer import AIOrganizer
+
+    if not file.exists():
+        print_error(f"File not found: {file}")
+        raise typer.Exit(1)
+
+    content = file.read_text()
+    organizer = AIOrganizer()
+
+    # Run organization
+    try:
+        organized = asyncio.run(organizer.organize(content))
+
+        if dry_run:
+            console.print(organized)
+        else:
+            output_path = output or file
+            output_path.write_text(organized)
+            print_success(f"✓ Organized notes saved to {output_path}")
+
+    except Exception as e:
+        print_error(f"Organization failed: {e}")
+        raise typer.Exit(1)
+
+
+@notes_app.command()
+def config(
+    show: bool = typer.Option(
+        False,
+        "--show",
+        help="Show current configuration"
+    ),
+):
+    """
+    Manage notes configuration.
+    """
+    config = NotesConfig.load()
+
+    if show:
+        console.print(config)
+    else:
+        typer.echo("Configuration management coming soon!")
+EOF
+
+# Create test fixture
+cat > tests/notes/fixtures/sample_notes.md << 'EOF'
+# Sample Notes
+
+- buy milk
+- call john about the project
+- review pull request #123
+- schedule team meeting
+- update documentation
+- fix bug in login flow
+
+Important: Remember to backup database before deployment
+
+Meeting notes from standup:
+- Alice working on frontend
+- Bob debugging backend issue
+- Charlie writing tests
+EOF
+
+echo "✅ Honk Notes implementation files created!"
+echo ""
+echo "Next steps:"
+echo "1. Integrate CLI into main Honk app:"
+echo "   Add to src/honk/cli.py:"
+echo "   from .notes.cli import notes_app"
+echo "   app.add_typer(notes_app, name='notes', help='AI-assisted note-taking')"
+echo ""
+echo "2. Test the implementation:"
+echo "   cd /Users/honk/code/honk"
+echo "   python -m pytest tests/notes/ -v"
+echo ""
+echo "3. Try it out:"
+echo "   honk notes edit test.md"
+echo ""
+echo "🎉 Happy note-taking!"
+EOF
+
+chmod +x setup_notes_app.sh
+
+echo "✅ Setup script created!"

@@ -44,6 +44,38 @@ cat ~/.local/share/uv/tools/honk/uv-receipt.toml
 3. **Test immediately**: `honk <command>` (no reinstall needed!)
 4. **Commit**: `git commit -m "..."`
 
+### Python Environment Rules (MANDATORY)
+
+**⚠️ ALWAYS use `uv run` for all Python development commands.**
+
+```bash
+# Testing
+uv run pytest                           # All tests
+uv run pytest tests/notes/ -v          # Specific tests with verbose
+uv run pytest -k test_config           # Run tests matching pattern
+
+# Code Quality
+uv run ruff check src/                 # Linting
+uv run ruff format src/                # Auto-formatting
+uv run mypy src/honk/                  # Type checking
+
+# Running Scripts
+uv run python script.py                # Any Python script
+uv run python test_notes_setup.py      # Validation scripts
+uv run python demo_notes.py            # Demo scripts
+
+# Dependencies
+uv pip install package                 # Add dependency
+uv sync                                # Sync environment with lock file
+uv lock                                # Update lock file
+```
+
+**Why?**
+- Ensures Python 3.12.2 is used
+- Uses pinned dependencies from `uv.lock`
+- Consistent environment across machines
+- Avoids "works on my machine" issues
+
 ### If You Need to Reinstall
 
 ```bash
