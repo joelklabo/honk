@@ -21,8 +21,8 @@
 - [x] Implement Typer CLI skeleton with result envelope + `honk introspect --json`.
 - [x] Build doctor engine with the `global` pack and hook it into commands.
 - [x] Ship `honk demo hello` (doctor + greeting + Rich help text).
+- [x] Implement CLI design system (semantic tokens + Rich theme).
 - [ ] Configure GitHub Actions workflows (`ci-core`, `ci-macos`, `docs-guard`, `release`).
-- [ ] Implement CLI design system (semantic tokens + Rich theme).
 
 ## Completed Tasks
 
@@ -32,9 +32,7 @@
 
 ## Next Steps
 
-1. Implement uv environment + baseline nox sessions.
-2. Land CLI skeleton + demo command per spec guidance.
-3. Wire up CI workflows and verify `honk demo hello --help` runs in automation.
+1. Configure GitHub Actions workflows (ci-core, ci-macos, docs-guard, release).
 
 ## Planned Tasks
 
@@ -157,25 +155,17 @@
 
 ## Decisions & Notes
 
-### 2025-11-18 - CLI Design System Research
+### 2025-11-18 - CLI Design System Implementation
 
-- Conducted comprehensive research on CLI design systems (Deep Dive mode, 2 hours, 12 web searches).
-- **Recommendation:** Implement Rich Theme-based design system with 6 semantic tokens (Option A - Simple).
-- **Industry Validation:**
-  - GitHub CLI: Uses semantic tokens + Primer design system
-  - Heroku CLI: Minimal palette with strict style guide
-  - AWS CLI: Structured, consistent output patterns
-  - All leading CLIs follow semantic token pattern
-- **Key Principles:**
-  - Semantic tokens (error, warning, success, info) not raw colors
-  - Icons + colors for accessibility (not color-only)
-  - Single source of truth (`src/honk/ui/theme.py`)
-  - Helper functions for consistent usage
-- **Implementation:** 2-3 hours (already have Rich 13.7.1, ~80 lines of code)
-- **Deliverables:** 5 comprehensive documents saved in `tmp/` for reference:
-  - Executive summary, implementation guide, working code, visual diagrams, research index
-- **Benefits:** Consistency, maintainability, accessibility, professional appearance
-- **Future-proof:** Can enhance to Option B (dataclasses) if needed, but Option A sufficient for <50 commands
+- ✅ **Implemented** Rich Theme-based design system with 6 semantic tokens (Option A - Simple).
+- Created `src/honk/ui/theme.py` with semantic tokens: success, error, warning, info, dim, emphasis
+- Helper functions with accessibility-first design (icons + colors): ✓, ✗, ⚠, ℹ
+- Integrated NO_COLOR support for test compatibility and accessibility
+- Migrated cli.py commands (version, info, introspect, doctor) to use design system
+- Updated tests to handle color output properly
+- **Result:** All 46 tests passing, lint clean, type checking clean
+- **Benefits:** Consistent output across commands, single source of truth, accessible by default
+- **Research artifacts:** Saved in `tmp/` for reference (implementation guide, examples, visual diagrams)
 
 ### 2025-11-18 - Typer/Click compatibility fix
 
