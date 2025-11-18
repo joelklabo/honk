@@ -1,0 +1,32 @@
+name: CI macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.20"
+      
+      - name: Set up Python
+        run: uv python install 3.12
+      
+      - name: Create venv and sync dependencies
+        run: |
+          uv venv --python 3.12 .venv
+          uv sync --all-extras --python 3.12
+      
+      - name: Run doctor with plan mode
+        run: uv run python -m honk doctor --plan --json
+      
+      - name: Run tests
+        run: uv run python -m pytest tests/ -v --tb=short

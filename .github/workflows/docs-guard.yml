@@ -1,0 +1,29 @@
+name: Docs Guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Check markdown files are in docs/
+        run: |
+          # Find markdown files outside docs/ (excluding symlinks and README.md)
+          OUTSIDE_DOCS=$(find . -maxdepth 1 -type f -name "*.md" ! -name "README.md" -o -path "./.*" -prune)
+          
+          if [ ! -z "$OUTSIDE_DOCS" ]; then
+            echo "Error: Found markdown files outside docs/:"
+            echo "$OUTSIDE_DOCS"
+            echo ""
+            echo "All markdown documentation should be in docs/"
+            echo "Only README.md is allowed at the root"
+            exit 1
+          fi
+          
+          echo "✓ All markdown files are properly organized"

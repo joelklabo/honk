@@ -1,0 +1,46 @@
+name: CI Core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.20"
+      
+      - name: Set up Python
+        run: uv python install 3.12
+      
+      - name: Create venv and sync dependencies
+        run: |
+          uv venv --python 3.12 .venv
+          uv sync --all-extras --python 3.12
+      
+      - name: Run ruff check
+        run: uv run python -m ruff check src/ tests/
+      
+      - name: Run mypy
+        run: uv run python -m mypy src/honk/ --ignore-missing-imports
+      
+      - name: Run tests
+        run: uv run python -m pytest tests/ -v --tb=short
+      
+      - name: Test introspect command
+        run: |
+          uv run python -m honk introspect --json > tmp/introspect.json
+          cat tmp/introspect.json
+      
+      - name: Test demo hello command
+        run: uv run python -m honk demo hello --help
+
+      - name: Generate help-json for demo hello
+        run: uv run python -m honk help-json version > tmp/demo_hello.help.json
