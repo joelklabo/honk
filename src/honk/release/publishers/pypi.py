@@ -58,7 +58,7 @@ class PyPIPublisher:
         # Publish using uv
         cmd = ["uv", "publish", "--token", token]
         if repository != "pypi":
-            cmd.extend(["--publish-url", f"https://upload.pypi.org/legacy/"])
+            cmd.extend(["--publish-url", "https://upload.pypi.org/legacy/"])
         
         cmd.extend(str(a) for a in artifacts)
         

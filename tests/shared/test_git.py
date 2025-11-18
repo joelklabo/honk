@@ -1,8 +1,7 @@
 """Tests for shared Git operations."""
 
-import pytest
 from datetime import datetime
-from honk.shared.git import Commit, GitOperations
+from honk.shared.git import Commit
 
 
 class TestCommit:

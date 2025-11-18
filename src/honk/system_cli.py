@@ -8,7 +8,7 @@ import psutil
 import time
 
 from .result import EXIT_OK, EXIT_SYSTEM
-from .ui import console, print_error, print_info
+from .ui import console, print_error
 from .watchdog.pty_scanner import scan_ptys
 
 system_app = typer.Typer(help="System diagnostics suite")

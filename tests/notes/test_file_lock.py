@@ -1,10 +1,7 @@
 """Tests for file locking."""
 
 import os
-import time
-from pathlib import Path
 
-import pytest
 
 from honk.notes.file_lock import FileLockManager
 

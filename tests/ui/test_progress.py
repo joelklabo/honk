@@ -1,6 +1,5 @@
 """Tests for progress UI components."""
 
-import os
 import io
 import pytest
 from rich.console import Console

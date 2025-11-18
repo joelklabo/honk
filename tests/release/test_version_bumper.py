@@ -1,7 +1,6 @@
 """Tests for version bumper."""
 
-import pytest
-from honk.release.versioning.bumper import Version, VersionBumper
+from honk.release.versioning.bumper import Version
 from honk.release.analyzer import ReleaseType
 
 

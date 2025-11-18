@@ -1,7 +1,6 @@
 """Release tool CLI commands."""
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -29,7 +28,7 @@ def status():
         analysis = analyzer.analyze(commits)
         
         # Create status table
-        table = Table(title=f"Release Status")
+        table = Table(title="Release Status")
         table.add_column("Item", style="cyan")
         table.add_column("Value", style="yellow")
         

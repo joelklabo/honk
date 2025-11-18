@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from honk.release.workflow import ReleaseWorkflow, ReleaseResult
+from honk.release.workflow import ReleaseWorkflow
 from honk.release.analyzer import ReleaseType
 
 

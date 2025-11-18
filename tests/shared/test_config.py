@@ -1,7 +1,6 @@
 """Unit tests for shared config."""
 
 import pytest
-from pathlib import Path
 
 from honk.shared.config import Config
 

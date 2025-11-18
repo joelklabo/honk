@@ -1,7 +1,6 @@
 """Basic tests for Honk Notes functionality."""
 
 import pytest
-from pathlib import Path
 from honk.notes.config import NotesConfig
 from honk.notes.widgets import IdleReached, StreamingTextArea
 from honk.notes.organizer import AIOrganizer
@@ -15,7 +14,7 @@ class TestNotesConfig:
         """Test default configuration values."""
         config = NotesConfig()
         assert config.idle_timeout == 30
-        assert config.auto_save == True
+        assert config.auto_save is True
         assert config.auto_save_interval == 2.0
         assert config.theme == "monokai"
         assert config.language == "markdown"
@@ -28,7 +27,7 @@ class TestNotesConfig:
             theme="dracula"
         )
         assert config.idle_timeout == 60
-        assert config.auto_save == False
+        assert config.auto_save is False
         assert config.theme == "dracula"
     
     def test_load_defaults(self):
@@ -57,7 +56,7 @@ class TestStreamingTextArea:
         assert editor.idle_timeout == 10
         assert editor.last_change == 0.0
         assert editor.idle_seconds == 0
-        assert editor.is_updating == False
+        assert editor.is_updating is False
     
     def test_default_timeout(self):
         """Test default idle timeout."""

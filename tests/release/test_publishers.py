@@ -1,7 +1,6 @@
 """Unit tests for release publishers."""
 
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 import os
 

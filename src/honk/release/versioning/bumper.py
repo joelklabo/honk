@@ -178,7 +178,6 @@ class VersionBumper:
             self.project_root / "src" / "honk" / "__init__.py",
         ]
         
-        old_str = str(old_version)
         new_str = str(new_version)
         
         for file_path in files_to_update:

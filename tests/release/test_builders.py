@@ -2,8 +2,7 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
-import subprocess
+from unittest.mock import MagicMock, patch
 
 from honk.release.builders.pypi import PyPIBuilder
 from honk.release.builders.homebrew import HomebrewBuilder

@@ -7,12 +7,10 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from rich.console import Console
 from rich.panel import Panel
-from rich.markdown import Markdown
 from rich.table import Table
 from rich.text import Text
-from honk.ui import console, print_success, print_info, print_warning
+from honk.ui import console, print_success, print_info
 
 def show_header():
     """Show demo header."""

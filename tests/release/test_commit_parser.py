@@ -1,11 +1,8 @@
 """Tests for conventional commit parser."""
 
-import pytest
 from honk.release.commit_parser import (
     ConventionalCommitParser,
-    ParsedCommit,
-    CommitType,
-    parse_commit
+    CommitType
 )
 
 
