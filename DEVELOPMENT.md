@@ -216,3 +216,33 @@ log_event("my_event_type", {
 ### Example in Codebase
 
 See `src/honk/watchdog/pty_cli.py` for an example of how the `watch` command logs cleanup events.
+## Logging
+
+### Overview
+
+Honk uses a centralized, structured logging system for recording significant events. This ensures that all log entries are consistent and easily machine-readable.
+
+### Usage
+
+To log an event, import and use the `log_event` function from the `honk.log` module.
+
+```python
+from honk.log import log_event
+
+# ...
+
+log_event("my_event_type", {
+    "key": "value",
+    "another_key": 123
+})
+```
+
+### Key Principles
+
+- **Log significant events**: Use logging for events that have an impact, such as automated actions, errors, or important state changes. Do not log trivial operations.
+- **Structured data**: The `data` payload must be a dictionary that can be serialized to JSON.
+- **Centralized log file**: All events are logged to a single, rotating log file located at `~/.local/state/honk/honk.log`.
+
+### Example in Codebase
+
+See `src/honk/watchdog/pty_cli.py` for an example of how the `watch` command logs cleanup events.
