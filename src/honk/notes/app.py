@@ -8,6 +8,7 @@ from .widgets import StreamingTextArea, ProcessingOverlay, IdleReached
 from .organizer import AIOrganizer
 from .auto_save import AutoSaver
 from .config import NotesConfig
+from .file_lock import FileLockManager
 
 
 class StreamingNotesApp(App):
@@ -49,9 +50,15 @@ class StreamingNotesApp(App):
     def __init__(self, config: NotesConfig):
         super().__init__()
         self.config = config
-        self.organizer = AIOrganizer(config.prompt_template)
+        self.organizer = AIOrganizer(
+            config.prompt_template,
+            retry_max_attempts=config.retry_max_attempts,
+            retry_base_delay=config.retry_base_delay,
+            retry_max_delay=config.retry_max_delay,
+        )
         self.auto_saver = None
         self.is_dirty = False
+        self.lock_manager = FileLockManager()
         
         # Agent-friendly components
         from .api import NotesAPI
@@ -89,13 +96,20 @@ class StreamingNotesApp(App):
         """Set up title and start IPC if configured."""
         filename = self.config.file_path.name if self.config.file_path else "Untitled"
         self.title = f"Honk Notes - {filename}"
-        self.sub_title = f"Idle: 0s | Ctrl+O: Organize | Ctrl+S: Save"
+        self.sub_title = "Idle: 0s | Ctrl+O: Organize | Ctrl+S: Save"
         
         # Start IPC server if configured
         if self.config.api_port and self.config.headless:
             from .ipc import NotesIPCServer
+
             self.ipc_server = NotesIPCServer(self, self.config.api_port)
             asyncio.create_task(self.ipc_server.start())
+
+    def on_unmount(self) -> None:
+        """Clean up resources on app exit."""
+        # Release file lock
+        if self.config.file_path:
+            self.lock_manager.release_lock(self.config.file_path)
 
     async def on_streaming_text_area_idle_reached(
         self,
@@ -120,12 +134,20 @@ class StreamingNotesApp(App):
         editor = self.query_one("#editor", StreamingTextArea)
         overlay = self.query_one("#processing", ProcessingOverlay)
 
+        retry_attempt = 0
         try:
             overlay.show("🤖 AI is organizing your notes...")
 
-            # Stream organized content
+            # Stream organized content with retry awareness
             async for partial, progress in self.organizer.organize_stream(content):
-                overlay.update_progress(progress, "Organizing...")
+                # Check if this is a retry
+                if retry_attempt > 0:
+                    overlay.update_progress(
+                        progress,
+                        f"Organizing... (retry {retry_attempt}/{self.config.retry_max_attempts})",
+                    )
+                else:
+                    overlay.update_progress(progress, "Organizing...")
 
             # Apply final result
             final_organized = partial
@@ -134,8 +156,18 @@ class StreamingNotesApp(App):
             overlay.update_progress(1.0, "✓ Done!")
             await asyncio.sleep(0.5)
 
+        except RuntimeError as e:
+            error_str = str(e).lower()
+            if "not found" in error_str:
+                self.notify(
+                    "GitHub Copilot CLI not found. Install with: npm install -g @github/copilot-cli",
+                    severity="error",
+                    timeout=10,
+                )
+            else:
+                self.notify(f"Organization failed: {e}", severity="error", timeout=5)
         except Exception as e:
-            self.notify(f"Organization failed: {e}", severity="error")
+            self.notify(f"Organization failed: {e}", severity="error", timeout=5)
         finally:
             overlay.hide()
             self.organizing = False

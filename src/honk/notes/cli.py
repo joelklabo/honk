@@ -224,21 +224,32 @@ def agent_set(
 ):
     """
     Agent-friendly: Set content without opening editor.
-    
+
     Examples:
         honk notes agent-set file.md --content "New content"
         echo "New content" | honk notes agent-set file.md --stdin
     """
     import json
     import sys
-    
+    from .file_lock import FileLockManager
+
     if stdin:
         content = sys.stdin.read()
-    
+
     if content is None:
         console.print(json.dumps({"error": "No content provided"}))
         raise typer.Exit(1)
-    
+
+    # Check file lock
+    lock_manager = FileLockManager()
+    if lock_manager.is_locked(file):
+        lock_info = lock_manager.get_lock_info(file)
+        error_msg = "File is locked"
+        if lock_info:
+            error_msg = f"File locked by PID {lock_info.pid} on {lock_info.hostname}"
+        console.print(json.dumps({"error": error_msg, "locked": True}))
+        raise typer.Exit(2)
+
     try:
         file.write_text(content)
         console.print(json.dumps({"success": True, "file": str(file)}))
@@ -268,7 +279,7 @@ def agent_organize(
 ):
     """
     Agent-friendly: Organize file without opening editor.
-    
+
     Examples:
         honk notes agent-organize file.md
         honk notes agent-organize file.md --output organized.md
@@ -277,29 +288,44 @@ def agent_organize(
     import json
     import asyncio
     from .organizer import AIOrganizer
-    
+    from .file_lock import FileLockManager
+
     if not file.exists():
         console.print(json.dumps({"error": "File not found"}))
         raise typer.Exit(1)
-    
+
+    # Check file lock
+    lock_manager = FileLockManager()
+    if lock_manager.is_locked(file):
+        lock_info = lock_manager.get_lock_info(file)
+        error_msg = "File is locked"
+        if lock_info:
+            error_msg = f"File locked by PID {lock_info.pid} on {lock_info.hostname}"
+        console.print(json.dumps({"error": error_msg, "locked": True}))
+        raise typer.Exit(2)
+
     try:
         content = file.read_text()
         organizer = AIOrganizer()
-        
+
         organized = asyncio.run(organizer.organize(content))
-        
+
         if dry_run:
             console.print(organized)
         else:
             output_file = output or file
             output_file.write_text(organized)
-            console.print(json.dumps({
-                "success": True,
-                "file": str(output_file),
-                "original_size": len(content),
-                "organized_size": len(organized)
-            }))
-    
+            console.print(
+                json.dumps(
+                    {
+                        "success": True,
+                        "file": str(output_file),
+                        "original_size": len(content),
+                        "organized_size": len(organized),
+                    }
+                )
+            )
+
     except Exception as e:
         console.print(json.dumps({"error": str(e)}))
         raise typer.Exit(1)

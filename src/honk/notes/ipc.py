@@ -81,7 +81,7 @@ class NotesIPCServer:
             }).encode('utf-8')
             try:
                 await asyncio.get_event_loop().sock_sendall(conn, error_response)
-            except:
+            except Exception:
                 pass
         
         finally:
@@ -190,5 +190,5 @@ class NotesIPCServer:
         if self.server:
             try:
                 self.server.close()
-            except:
+            except Exception:
                 pass

@@ -28,6 +28,11 @@ class NotesConfig:
     # Advanced
     max_undo_history: int = 100
     enable_file_drop: bool = True
+
+    # Retry configuration
+    retry_max_attempts: int = 3
+    retry_base_delay: float = 1.0
+    retry_max_delay: float = 10.0
     
     # Agent-friendly options
     non_interactive: bool = False

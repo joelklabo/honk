@@ -62,4 +62,8 @@ Let's use `planloop` to impl/ement this. When `planloop` asks you for feedback, 
     - Create some kind of commit watcher, honk tool to alert you if you've gone a long time without committing. You could maybe hook into plan loop as well if it is getting messages that features done or a task is done and it didn't see a commit. We could raise an error or warning or something.
 
  Start a planloop session and implement this spec: docs/plans/agent-and-prompt-tooling-spec.md 
+
+- mFormalize how multiple agents should interact with plan loop\
+\
+- another error.
     

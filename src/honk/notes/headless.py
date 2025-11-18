@@ -14,9 +14,7 @@ def run_headless_mode(config: NotesConfig) -> int:
     """
     # Read file if it exists
     if config.file_path and config.file_path.exists():
-        content = config.file_path.read_text()
-    else:
-        content = ""
+        _ = config.file_path.read_text()
     
     # If API mode requested, start IPC server
     if config.api_port and config.headless:

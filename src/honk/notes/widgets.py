@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from textual.widgets import TextArea, Static, Label
+from textual.widgets import TextArea, Static
 from textual.containers import Container, Vertical
 from textual.reactive import reactive
 from textual.message import Message
