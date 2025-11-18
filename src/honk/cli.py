@@ -10,7 +10,9 @@ from .auth import ensure_gh_auth, ensure_az_auth
 
 app = typer.Typer(add_completion=False)
 auth_app = typer.Typer()
+demo_app = typer.Typer()
 app.add_typer(auth_app, name="auth")
+app.add_typer(demo_app, name="demo")
 
 # Register built-in doctor packs
 register_pack(global_pack)
@@ -106,6 +108,46 @@ def auth_ensure_az():
     success, message = ensure_az_auth()
     print(message)
     sys.exit(result.EXIT_OK if success else result.EXIT_NEEDS_AUTH)
+
+
+@demo_app.command("hello")
+def demo_hello(
+    name: str = typer.Option("World", "--name", help="Name to greet"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+    plan: bool = typer.Option(False, "--plan", help="Run in plan mode (dry-run)")
+):
+    """Demo command demonstrating full CLI contract with prereqs, result envelope, and flags."""
+    from .demo.hello import run_hello
+    
+    # Run prereq checks first
+    try:
+        pack_results = run_all_packs(plan=plan)
+        if any(pr.status == "failed" for pr in pack_results):
+            if json_output:
+                error = {
+                    "status": "prereq_failed",
+                    "message": "Prerequisites not met",
+                    "pack_results": [pr.model_dump() for pr in pack_results]
+                }
+                print(json.dumps(error, indent=2))
+            else:
+                print("Prerequisites failed - run 'honk doctor' to diagnose")
+            sys.exit(result.EXIT_PREREQ_FAILED)
+    except Exception as e:
+        print(f"Error checking prerequisites: {e}", file=sys.stderr)
+        sys.exit(result.EXIT_BUG)
+    
+    # Run the command
+    result_envelope = run_hello(name=name, json_output=json_output, plan=plan)
+    
+    if json_output:
+        print(result_envelope.model_dump_json(indent=2))
+    else:
+        print(f"{result_envelope.facts['greeting']}")
+        if plan:
+            print("(Plan mode - no changes made)")
+    
+    sys.exit(result.EXIT_OK)
 
 
 # Register built-in commands for introspection
