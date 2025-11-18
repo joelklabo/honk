@@ -1,7 +1,6 @@
 """Unit tests for release builders."""
 
 import pytest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from honk.release.builders.pypi import PyPIBuilder

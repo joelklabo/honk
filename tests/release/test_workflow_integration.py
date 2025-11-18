@@ -1,8 +1,7 @@
 """Integration tests for release workflow."""
 
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from honk.release.workflow import ReleaseWorkflow
 from honk.release.analyzer import ReleaseType
