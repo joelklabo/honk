@@ -1,10 +1,10 @@
 """Tests for doctor pack engine."""
+
 import json
-import pytest
 from typer.testing import CliRunner
 
 from honk.cli import app
-from honk.internal.doctor import global_pack, register_pack, get_pack, run_pack
+from honk.internal.doctor import global_pack, get_pack, run_pack
 
 runner = CliRunner()
 
@@ -63,7 +63,7 @@ def test_doctor_command_json():
     """Test doctor command with JSON output."""
     result = runner.invoke(app, ["doctor", "--json"])
     assert result.exit_code in [0, 10]
-    
+
     data = json.loads(result.stdout)
     assert "packs" in data
     assert len(data["packs"]) > 0

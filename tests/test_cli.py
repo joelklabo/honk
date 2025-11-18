@@ -1,5 +1,5 @@
 """Tests for the CLI module."""
-import pytest
+
 from typer.testing import CliRunner
 
 from honk.cli import app

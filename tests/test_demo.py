@@ -1,6 +1,6 @@
 """Tests for demo commands."""
+
 import json
-import pytest
 from typer.testing import CliRunner
 
 from honk.cli import app
@@ -57,7 +57,7 @@ def test_demo_hello_json_output():
     """Test demo hello with JSON output."""
     result = runner.invoke(app, ["demo", "hello", "--json"])
     assert result.exit_code == 0
-    
+
     data = json.loads(result.stdout)
     assert data["status"] == "ok"
     assert data["code"] == "demo.hello.ok"

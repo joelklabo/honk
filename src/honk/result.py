@@ -1,22 +1,26 @@
 """Result envelope for honk CLI commands."""
+
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
 class Link(BaseModel):
     """Link to related resources."""
+
     rel: str
     href: str
 
 
 class NextStep(BaseModel):
     """Suggested next command to run."""
+
     run: list[str]
     summary: str
 
 
 class PackResult(BaseModel):
     """Result from a doctor pack check."""
+
     pack: str
     status: Literal["ok", "failed", "skipped"]
     duration_ms: int
@@ -24,6 +28,7 @@ class PackResult(BaseModel):
 
 class ResultEnvelope(BaseModel):
     """Standard result envelope for all honk commands."""
+
     version: str = Field(default="1.0")
     command: list[str]
     status: str

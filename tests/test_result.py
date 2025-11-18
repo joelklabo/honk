@@ -1,6 +1,6 @@
 """Tests for result envelope."""
-import pytest
-from honk.result import ResultEnvelope, Link, NextStep, PackResult, EXIT_OK
+
+from honk.result import ResultEnvelope, Link, NextStep, EXIT_OK
 
 
 def test_result_envelope_basic():
@@ -11,7 +11,7 @@ def test_result_envelope_basic():
         code="test.ok",
         summary="Test passed",
         run_id="test-123",
-        duration_ms=100
+        duration_ms=100,
     )
     assert result.version == "1.0"
     assert result.command == ["honk", "test"]
@@ -29,7 +29,7 @@ def test_result_envelope_with_links():
         summary="Test passed",
         run_id="test-123",
         duration_ms=100,
-        links=[Link(rel="docs", href="https://example.com")]
+        links=[Link(rel="docs", href="https://example.com")],
     )
     assert len(result.links) == 1
     assert result.links[0].rel == "docs"
@@ -44,7 +44,7 @@ def test_result_envelope_with_next_steps():
         summary="Test passed",
         run_id="test-123",
         duration_ms=100,
-        next=[NextStep(run=["honk", "next"], summary="Run next command")]
+        next=[NextStep(run=["honk", "next"], summary="Run next command")],
     )
     assert len(result.next) == 1
     assert result.next[0].run == ["honk", "next"]

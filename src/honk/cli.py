@@ -1,4 +1,5 @@
 """Main CLI application for honk."""
+
 import sys
 import json
 import typer
@@ -34,7 +35,7 @@ def info():
 
 @app.command()
 def introspect(
-    json_output: bool = typer.Option(True, "--json/--no-json", help="Output as JSON")
+    json_output: bool = typer.Option(True, "--json/--no-json", help="Output as JSON"),
 ):
     """Emit command catalog with metadata for all commands."""
     schema = registry.get_introspection_schema()
@@ -47,13 +48,17 @@ def introspect(
 
 
 @app.command("help-json")
-def help_json(command: str = typer.Argument(..., help="Command to get help for (e.g., 'version' or 'introspect')")):
+def help_json(
+    command: str = typer.Argument(
+        ..., help="Command to get help for (e.g., 'version' or 'introspect')"
+    ),
+):
     """Get machine-readable help for a specific command."""
     from . import help as help_module
-    
+
     command_path = ["honk", command]
     help_schema = help_module.get_command_help_from_registry(command_path)
-    
+
     if help_schema:
         print(help_module.emit_help_json(help_schema))
     else:
@@ -64,16 +69,14 @@ def help_json(command: str = typer.Argument(..., help="Command to get help for (
 @app.command()
 def doctor(
     plan: bool = typer.Option(False, "--plan", help="Run in plan mode (no mutations)"),
-    json_output: bool = typer.Option(False, "--json", help="Output as JSON")
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Run doctor packs to check prerequisites."""
     try:
         pack_results = run_all_packs(plan=plan)
-        
+
         if json_output:
-            output = {
-                "packs": [pr.model_dump() for pr in pack_results]
-            }
+            output = {"packs": [pr.model_dump() for pr in pack_results]}
             print(json.dumps(output, indent=2))
         else:
             for pr in pack_results:
@@ -84,11 +87,11 @@ def doctor(
                     print(f"{check_icon} {check.name}: {check.message}")
                     if check.remedy:
                         print(f"    → {check.remedy}")
-        
+
         # Exit with error if any pack failed
         if any(pr.status == "failed" for pr in pack_results):
             sys.exit(result.EXIT_PREREQ_FAILED)
-            
+
     except Exception as e:
         print(f"Error running doctor packs: {e}", file=sys.stderr)
         sys.exit(result.EXIT_BUG)
@@ -114,11 +117,11 @@ def auth_ensure_az():
 def demo_hello(
     name: str = typer.Option("World", "--name", help="Name to greet"),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
-    plan: bool = typer.Option(False, "--plan", help="Run in plan mode (dry-run)")
+    plan: bool = typer.Option(False, "--plan", help="Run in plan mode (dry-run)"),
 ):
     """Demo command demonstrating full CLI contract with prereqs, result envelope, and flags."""
     from .demo.hello import run_hello
-    
+
     # Run prereq checks first
     try:
         pack_results = run_all_packs(plan=plan)
@@ -127,7 +130,7 @@ def demo_hello(
                 error = {
                     "status": "prereq_failed",
                     "message": "Prerequisites not met",
-                    "pack_results": [pr.model_dump() for pr in pack_results]
+                    "pack_results": [pr.model_dump() for pr in pack_results],
                 }
                 print(json.dumps(error, indent=2))
             else:
@@ -136,17 +139,17 @@ def demo_hello(
     except Exception as e:
         print(f"Error checking prerequisites: {e}", file=sys.stderr)
         sys.exit(result.EXIT_BUG)
-    
+
     # Run the command
     result_envelope = run_hello(name=name, json_output=json_output, plan=plan)
-    
+
     if json_output:
         print(result_envelope.model_dump_json(indent=2))
     else:
         print(f"{result_envelope.facts['greeting']}")
         if plan:
             print("(Plan mode - no changes made)")
-    
+
     sys.exit(result.EXIT_OK)
 
 
@@ -163,9 +166,9 @@ def _register_builtins():
             examples=[
                 registry.CommandExample(
                     command="honk version",
-                    description="Display honk and schema versions"
+                    description="Display honk and schema versions",
                 )
-            ]
+            ],
         )
     )
     registry.register_command(
@@ -177,10 +180,9 @@ def _register_builtins():
             description="Show CLI information",
             examples=[
                 registry.CommandExample(
-                    command="honk info",
-                    description="Display CLI details"
+                    command="honk info", description="Display CLI details"
                 )
-            ]
+            ],
         )
     )
     registry.register_command(
@@ -195,15 +197,15 @@ def _register_builtins():
                     names=["--json", "--no-json"],
                     type_hint="bool",
                     default=True,
-                    help="Output as JSON"
+                    help="Output as JSON",
                 )
             ],
             examples=[
                 registry.CommandExample(
                     command="honk introspect --json",
-                    description="Get full command catalog as JSON"
+                    description="Get full command catalog as JSON",
                 )
-            ]
+            ],
         )
     )
     registry.register_command(
@@ -218,19 +220,19 @@ def _register_builtins():
                     name="command",
                     type_hint="str",
                     required=True,
-                    help="Command to get help for"
+                    help="Command to get help for",
                 )
             ],
             examples=[
                 registry.CommandExample(
                     command="honk help-json version",
-                    description="Get JSON help schema for version command"
+                    description="Get JSON help schema for version command",
                 ),
                 registry.CommandExample(
                     command="honk help-json introspect",
-                    description="Get JSON help schema for introspect command"
-                )
-            ]
+                    description="Get JSON help schema for introspect command",
+                ),
+            ],
         )
     )
     registry.register_command(
@@ -245,30 +247,29 @@ def _register_builtins():
                     names=["--plan"],
                     type_hint="bool",
                     default=False,
-                    help="Run in plan mode (no mutations)"
+                    help="Run in plan mode (no mutations)",
                 ),
                 registry.CommandOption(
                     names=["--json"],
                     type_hint="bool",
                     default=False,
-                    help="Output as JSON"
-                )
+                    help="Output as JSON",
+                ),
             ],
             prereqs=["global"],
             examples=[
                 registry.CommandExample(
-                    command="honk doctor",
-                    description="Run all doctor pack checks"
+                    command="honk doctor", description="Run all doctor pack checks"
                 ),
                 registry.CommandExample(
                     command="honk doctor --plan",
-                    description="Preview checks without making changes"
+                    description="Preview checks without making changes",
                 ),
                 registry.CommandExample(
                     command="honk doctor --json",
-                    description="Get check results as JSON"
-                )
-            ]
+                    description="Get check results as JSON",
+                ),
+            ],
         )
     )
 

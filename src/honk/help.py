@@ -1,11 +1,12 @@
 """Custom help formatters for machine-readable output."""
-import json
+
 from typing import Any
 from pydantic import BaseModel, Field
 
 
 class ArgumentSchema(BaseModel):
     """Schema for a command argument."""
+
     name: str
     type: str
     required: bool = True
@@ -15,6 +16,7 @@ class ArgumentSchema(BaseModel):
 
 class OptionSchema(BaseModel):
     """Schema for a command option."""
+
     names: list[str]
     type: str
     required: bool = False
@@ -24,12 +26,14 @@ class OptionSchema(BaseModel):
 
 class ExampleSchema(BaseModel):
     """Example command invocation."""
+
     command: str
     description: str
 
 
 class CommandHelpSchema(BaseModel):
     """Machine-readable help schema for a command."""
+
     version: str = Field(default="1.0")
     command: list[str]
     description: str
@@ -48,7 +52,7 @@ def emit_help_json(schema: CommandHelpSchema) -> str:
 def get_command_help_from_registry(command_path: list[str]) -> CommandHelpSchema | None:
     """Get help schema for a command from the registry."""
     from . import registry
-    
+
     all_commands = registry.get_all_commands()
     for cmd in all_commands:
         if cmd.full_path == command_path:
@@ -61,7 +65,7 @@ def get_command_help_from_registry(command_path: list[str]) -> CommandHelpSchema
                         type=arg.type_hint,
                         required=arg.required,
                         default=arg.default,
-                        help=arg.help
+                        help=arg.help,
                     )
                     for arg in cmd.arguments
                 ],
@@ -71,18 +75,15 @@ def get_command_help_from_registry(command_path: list[str]) -> CommandHelpSchema
                         type=opt.type_hint,
                         required=opt.required,
                         default=opt.default,
-                        help=opt.help
+                        help=opt.help,
                     )
                     for opt in cmd.options
                 ],
                 examples=[
-                    ExampleSchema(
-                        command=ex.command,
-                        description=ex.description
-                    )
+                    ExampleSchema(command=ex.command, description=ex.description)
                     for ex in cmd.examples
                 ],
                 doctor_packs=cmd.prereqs,
-                auth_scopes=cmd.auth_scopes
+                auth_scopes=cmd.auth_scopes,
             )
     return None

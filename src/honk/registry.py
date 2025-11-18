@@ -1,10 +1,12 @@
 """Command registry for introspection."""
+
 from typing import Any
 from pydantic import BaseModel, Field
 
 
 class CommandArgument(BaseModel):
     """Metadata for a command argument."""
+
     name: str
     type_hint: str
     required: bool = True
@@ -14,6 +16,7 @@ class CommandArgument(BaseModel):
 
 class CommandOption(BaseModel):
     """Metadata for a command option."""
+
     names: list[str]
     type_hint: str
     required: bool = False
@@ -23,12 +26,14 @@ class CommandOption(BaseModel):
 
 class CommandExample(BaseModel):
     """Example command usage."""
+
     command: str
     description: str
 
 
 class CommandMetadata(BaseModel):
     """Metadata for a single command."""
+
     area: str
     tool: str
     action: str
@@ -43,6 +48,7 @@ class CommandMetadata(BaseModel):
 
 class IntrospectionSchema(BaseModel):
     """Full introspection schema for all commands."""
+
     version: str = Field(default="1.0")
     commands: list[CommandMetadata]
 

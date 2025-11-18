@@ -1,6 +1,6 @@
 """Tests for introspection functionality."""
+
 import json
-import pytest
 from typer.testing import CliRunner
 
 from honk.cli import app
@@ -13,7 +13,7 @@ def test_introspect_json_output():
     """Test introspect command with JSON output."""
     result = runner.invoke(app, ["introspect", "--json"])
     assert result.exit_code == 0
-    
+
     data = json.loads(result.stdout)
     assert data["version"] == "1.0"
     assert "commands" in data
@@ -34,7 +34,7 @@ def test_introspection_schema_structure():
     schema = registry.get_introspection_schema()
     assert schema.version == "1.0"
     assert len(schema.commands) > 0
-    
+
     # Check first command has required fields
     cmd = schema.commands[0]
     assert hasattr(cmd, "area")
