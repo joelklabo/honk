@@ -43,3 +43,46 @@ class CommandHelpSchema(BaseModel):
 def emit_help_json(schema: CommandHelpSchema) -> str:
     """Emit help schema as JSON."""
     return schema.model_dump_json(indent=2)
+
+
+def get_command_help_from_registry(command_path: list[str]) -> CommandHelpSchema | None:
+    """Get help schema for a command from the registry."""
+    from . import registry
+    
+    all_commands = registry.get_all_commands()
+    for cmd in all_commands:
+        if cmd.full_path == command_path:
+            return CommandHelpSchema(
+                command=cmd.full_path,
+                description=cmd.description,
+                arguments=[
+                    ArgumentSchema(
+                        name=arg.name,
+                        type=arg.type_hint,
+                        required=arg.required,
+                        default=arg.default,
+                        help=arg.help
+                    )
+                    for arg in cmd.arguments
+                ],
+                options=[
+                    OptionSchema(
+                        names=opt.names,
+                        type=opt.type_hint,
+                        required=opt.required,
+                        default=opt.default,
+                        help=opt.help
+                    )
+                    for opt in cmd.options
+                ],
+                examples=[
+                    ExampleSchema(
+                        command=ex.command,
+                        description=ex.description
+                    )
+                    for ex in cmd.examples
+                ],
+                doctor_packs=cmd.prereqs,
+                auth_scopes=cmd.auth_scopes
+            )
+    return None

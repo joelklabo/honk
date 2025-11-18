@@ -37,6 +37,21 @@ def introspect(
             print(f"  {'/'.join(cmd.full_path)}: {cmd.description}")
 
 
+@app.command("help-json")
+def help_json(command: str = typer.Argument(..., help="Command to get help for (e.g., 'version' or 'introspect')")):
+    """Get machine-readable help for a specific command."""
+    from . import help as help_module
+    
+    command_path = ["honk", command]
+    help_schema = help_module.get_command_help_from_registry(command_path)
+    
+    if help_schema:
+        print(help_module.emit_help_json(help_schema))
+    else:
+        print(f"Error: Command '{command}' not found", file=sys.stderr)
+        sys.exit(result.EXIT_BUG)
+
+
 # Register built-in commands for introspection
 def _register_builtins():
     """Register built-in commands in the registry."""
@@ -89,6 +104,33 @@ def _register_builtins():
                 registry.CommandExample(
                     command="honk introspect --json",
                     description="Get full command catalog as JSON"
+                )
+            ]
+        )
+    )
+    registry.register_command(
+        registry.CommandMetadata(
+            area="core",
+            tool="help",
+            action="json",
+            full_path=["honk", "help-json"],
+            description="Get machine-readable help for a specific command",
+            arguments=[
+                registry.CommandArgument(
+                    name="command",
+                    type_hint="str",
+                    required=True,
+                    help="Command to get help for"
+                )
+            ],
+            examples=[
+                registry.CommandExample(
+                    command="honk help-json version",
+                    description="Get JSON help schema for version command"
+                ),
+                registry.CommandExample(
+                    command="honk help-json introspect",
+                    description="Get JSON help schema for introspect command"
                 )
             ]
         )
