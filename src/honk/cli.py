@@ -5,8 +5,12 @@ import typer
 
 from . import result
 from . import registry
+from .internal.doctor import register_pack, global_pack, run_all_packs
 
 app = typer.Typer(add_completion=False)
+
+# Register built-in doctor packs
+register_pack(global_pack)
 
 
 @app.command()
@@ -49,6 +53,39 @@ def help_json(command: str = typer.Argument(..., help="Command to get help for (
         print(help_module.emit_help_json(help_schema))
     else:
         print(f"Error: Command '{command}' not found", file=sys.stderr)
+        sys.exit(result.EXIT_BUG)
+
+
+@app.command()
+def doctor(
+    plan: bool = typer.Option(False, "--plan", help="Run in plan mode (no mutations)"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON")
+):
+    """Run doctor packs to check prerequisites."""
+    try:
+        pack_results = run_all_packs(plan=plan)
+        
+        if json_output:
+            output = {
+                "packs": [pr.model_dump() for pr in pack_results]
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            for pr in pack_results:
+                status_icon = "✓" if pr.status == "ok" else "✗"
+                print(f"{status_icon} {pr.pack}: {pr.summary} ({pr.duration_ms}ms)")
+                for check in pr.checks:
+                    check_icon = "  ✓" if check.passed else "  ✗"
+                    print(f"{check_icon} {check.name}: {check.message}")
+                    if check.remedy:
+                        print(f"    → {check.remedy}")
+        
+        # Exit with error if any pack failed
+        if any(pr.status == "failed" for pr in pack_results):
+            sys.exit(result.EXIT_PREREQ_FAILED)
+            
+    except Exception as e:
+        print(f"Error running doctor packs: {e}", file=sys.stderr)
         sys.exit(result.EXIT_BUG)
 
 
@@ -131,6 +168,44 @@ def _register_builtins():
                 registry.CommandExample(
                     command="honk help-json introspect",
                     description="Get JSON help schema for introspect command"
+                )
+            ]
+        )
+    )
+    registry.register_command(
+        registry.CommandMetadata(
+            area="core",
+            tool="doctor",
+            action="run",
+            full_path=["honk", "doctor"],
+            description="Run doctor packs to check prerequisites",
+            options=[
+                registry.CommandOption(
+                    names=["--plan"],
+                    type_hint="bool",
+                    default=False,
+                    help="Run in plan mode (no mutations)"
+                ),
+                registry.CommandOption(
+                    names=["--json"],
+                    type_hint="bool",
+                    default=False,
+                    help="Output as JSON"
+                )
+            ],
+            prereqs=["global"],
+            examples=[
+                registry.CommandExample(
+                    command="honk doctor",
+                    description="Run all doctor pack checks"
+                ),
+                registry.CommandExample(
+                    command="honk doctor --plan",
+                    description="Preview checks without making changes"
+                ),
+                registry.CommandExample(
+                    command="honk doctor --json",
+                    description="Get check results as JSON"
                 )
             ]
         )
