@@ -1,5 +1,6 @@
 """Honk CLI design system - colors, styles, and output helpers."""
 
+import os
 from rich.console import Console
 from rich.theme import Theme
 
@@ -22,42 +23,49 @@ HONK_THEME = Theme({
     "brand": "magenta",
 })
 
-# Create shared console instance
-console = Console(theme=HONK_THEME)
+# Create shared console instance with NO_COLOR support
+_no_color = os.getenv("NO_COLOR") or os.getenv("HONK_NO_COLOR")
+console = Console(theme=HONK_THEME, no_color=bool(_no_color), force_terminal=True)
 
 
 # Status message helpers with icons
 def print_success(msg: str) -> None:
     """Print success message with checkmark."""
-    console.print(f"✓ {msg}", style="success")
+    _get_console().print(f"✓ {msg}", style="success")
 
 
 def print_error(msg: str) -> None:
     """Print error message with X."""
-    console.print(f"✗ {msg}", style="error")
+    _get_console().print(f"✗ {msg}", style="error")
 
 
 def print_warning(msg: str) -> None:
     """Print warning message with warning symbol."""
-    console.print(f"⚠ {msg}", style="warning")
+    _get_console().print(f"⚠ {msg}", style="warning")
 
 
 def print_info(msg: str) -> None:
     """Print info message with info symbol."""
-    console.print(f"ℹ {msg}", style="info")
+    _get_console().print(f"ℹ {msg}", style="info")
 
 
 def print_dim(msg: str) -> None:
     """Print dimmed secondary information."""
-    console.print(msg, style="dim")
+    _get_console().print(msg, style="dim")
+
+
+def _get_console() -> Console:
+    """Get console instance respecting current NO_COLOR setting."""
+    no_color = bool(os.getenv("NO_COLOR") or os.getenv("HONK_NO_COLOR"))
+    return Console(theme=HONK_THEME, no_color=no_color, force_terminal=True)
 
 
 # Structured output helpers
 def print_kv(key: str, value: str) -> None:
     """Print key-value pair with styled key."""
-    console.print(f"[key]{key}:[/key] [value]{value}[/value]")
+    _get_console().print(f"[key]{key}:[/key] [value]{value}[/value]")
 
 
 def print_code(code: str) -> None:
     """Print code snippet."""
-    console.print(code, style="code")
+    _get_console().print(code, style="code")

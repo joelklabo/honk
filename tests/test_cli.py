@@ -10,7 +10,7 @@ runner = CliRunner()
 
 def test_version_command():
     """Test version command outputs correctly."""
-    result = runner.invoke(app, ["version"])
+    result = runner.invoke(app, ["version"], env={"NO_COLOR": "1"})
     assert result.exit_code == 0
     assert "honk version 0.1.0" in result.stdout
     assert "result schema version: 1.0" in result.stdout
@@ -29,7 +29,7 @@ def test_version_command_json():
 
 def test_info_command():
     """Test info command outputs correctly."""
-    result = runner.invoke(app, ["info"])
+    result = runner.invoke(app, ["info"], env={"NO_COLOR": "1"})
     assert result.exit_code == 0
     assert "honk" in result.stdout
     assert "Agent-first CLI" in result.stdout

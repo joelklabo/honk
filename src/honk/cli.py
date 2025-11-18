@@ -59,8 +59,8 @@ def version(
         )
         print(envelope.model_dump_json(indent=2))
     else:
-        print("honk version 0.1.0")
-        print("result schema version: 1.0")
+        print_info("honk version 0.1.0")
+        print_dim("result schema version: 1.0")
 
 
 @app.command()
@@ -84,8 +84,8 @@ def info(
         )
         print(envelope.model_dump_json(indent=2))
     else:
-        print("honk - Agent-first CLI for developer workflows")
-        print("Python package: honk")
+        print_info("honk - Agent-first CLI for developer workflows")
+        print_dim("Python package: honk")
 
 
 @app.command()
@@ -97,9 +97,9 @@ def introspect(
     if json_output:
         print(schema.model_dump_json(indent=2))
     else:
-        print(f"Commands: {len(schema.commands)}")
+        print_info(f"Commands: {len(schema.commands)}")
         for cmd in schema.commands:
-            print(f"  {'/'.join(cmd.full_path)}: {cmd.description}")
+            console.print(f"  [key]{'/'.join(cmd.full_path)}:[/key] [dim]{cmd.description}[/dim]")
 
 
 @app.command("help-json")
