@@ -36,6 +36,27 @@ class TestNotesConfig:
         assert isinstance(config, NotesConfig)
         assert config.idle_timeout == 30
 
+    def test_load_default_file_path(self, tmp_path):
+        """Test that a default file path is set when none is provided."""
+        # Temporarily override default_notes_dir for testing
+        original_default_notes_dir = NotesConfig.default_notes_dir
+        NotesConfig.default_notes_dir = tmp_path / "test_punk_managers"
+
+        try:
+            config = NotesConfig.load(default_notes_dir=NotesConfig.default_notes_dir)
+            assert config.file_path is not None
+            assert config.file_path.parent == NotesConfig.default_notes_dir
+            assert NotesConfig.default_notes_dir.exists()
+            assert config.file_path.name.startswith("untitled_")
+            assert config.file_path.name.endswith(".md")
+        finally:
+            # Clean up and restore original default_notes_dir
+            if NotesConfig.default_notes_dir.exists():
+                for item in NotesConfig.default_notes_dir.iterdir():
+                    item.unlink()
+                NotesConfig.default_notes_dir.rmdir()
+            NotesConfig.default_notes_dir = original_default_notes_dir
+
 
 class TestIdleReached:
     """Test IdleReached message."""

@@ -74,7 +74,7 @@ def edit(
         prompt_template = prompt.read_text()
 
     # Create config
-    config = NotesConfig(
+    config = NotesConfig.load(
         file_path=file,
         idle_timeout=idle_timeout,
         auto_save=not no_auto_save,

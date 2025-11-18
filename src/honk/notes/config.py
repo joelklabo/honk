@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +15,7 @@ class NotesConfig:
     file_path: Optional[Path] = None
     auto_save: bool = True
     auto_save_interval: float = 2.0  # seconds
+    default_notes_dir: Path = Path.home() / ".honk" / "notes" / "punk_managers"
 
     # AI organization
     idle_timeout: int = 30  # seconds
@@ -42,7 +44,14 @@ class NotesConfig:
     no_color: bool = False
 
     @classmethod
-    def load(cls, file_path: Optional[Path] = None) -> "NotesConfig":
+    def load(
+        cls,
+        file_path: Optional[Path] = None,
+        idle_timeout: Optional[int] = None,
+        auto_save: Optional[bool] = None,
+        prompt_template: Optional[str] = None,
+        default_notes_dir: Optional[Path] = None,
+    ) -> "NotesConfig":
         """Load config from file or defaults with environment variable overrides.
         
         Respects environment variables for agent-friendly configuration:
@@ -53,7 +62,20 @@ class NotesConfig:
         - NO_COLOR: Disable colors (standard)
         """
         # TODO: Load from ~/.config/honk/notes.toml if exists
-        config = cls(file_path=file_path)
+        config = cls(
+            file_path=file_path,
+            idle_timeout=idle_timeout if idle_timeout is not None else cls.idle_timeout,
+            auto_save=auto_save if auto_save is not None else cls.auto_save,
+            prompt_template=prompt_template if prompt_template is not None else cls.prompt_template,
+            default_notes_dir=default_notes_dir if default_notes_dir is not None else cls.default_notes_dir,
+        )
+
+        # If no file_path is provided, use a default in the punk_managers directory
+        if config.file_path is None:
+            config.default_notes_dir.mkdir(parents=True, exist_ok=True)
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            config.file_path = config.default_notes_dir / f"untitled_{timestamp}.md"
         
         # Agent-friendly overrides from environment
         if os.getenv("HONK_NOTES_NON_INTERACTIVE") == "1":
