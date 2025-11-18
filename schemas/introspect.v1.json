@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/honk/schemas/introspect.v1.json",
+  "title": "Honk Introspection Schema v1.0",
+  "description": "Full command catalog with metadata for all honk commands",
+  "type": "object",
+  "required": ["version", "commands"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CommandMetadata"
+      },
+      "description": "List of all registered commands"
+    }
+  },
+  "$defs": {
+    "CommandMetadata": {
+      "type": "object",
+      "required": ["area", "tool", "action", "full_path", "description"],
+      "properties": {
+        "area": {
+          "type": "string",
+          "description": "Top-level namespace (e.g., core, demo, auth)"
+        },
+        "tool": {
+          "type": "string",
+          "description": "Tool name within the area"
+        },
+        "action": {
+          "type": "string",
+          "description": "Action performed by the command"
+        },
+        "full_path": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "Full command path (e.g., ['honk', 'demo', 'hello'])"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable command description"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandArgument"
+          },
+          "default": [],
+          "description": "Positional arguments"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandOption"
+          },
+          "default": [],
+          "description": "Optional flags and parameters"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandExample"
+          },
+          "default": [],
+          "description": "Usage examples"
+        },
+        "prereqs": {
+          "type": "array",
+          "items": {"type": "string"},
+          "default": [],
+          "description": "Required doctor packs"
+        },
+        "auth_scopes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "default": {},
+          "description": "Required authentication scopes by provider"
+        }
+      }
+    },
+    "CommandArgument": {
+      "type": "object",
+      "required": ["name", "type_hint"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Argument name"
+        },
+        "type_hint": {
+          "type": "string",
+          "description": "Type annotation (e.g., str, int, bool)"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the argument is required"
+        },
+        "default": {
+          "description": "Default value if not provided"
+        },
+        "help": {
+          "type": "string",
+          "default": "",
+          "description": "Help text for the argument"
+        }
+      }
+    },
+    "CommandOption": {
+      "type": "object",
+      "required": ["names", "type_hint"],
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "Option flag names (e.g., ['--json', '--no-json'])"
+        },
+        "type_hint": {
+          "type": "string",
+          "description": "Type annotation"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the option is required"
+        },
+        "default": {
+          "description": "Default value if not provided"
+        },
+        "help": {
+          "type": "string",
+          "default": "",
+          "description": "Help text for the option"
+        }
+      }
+    },
+    "CommandExample": {
+      "type": "object",
+      "required": ["command", "description"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Example command invocation"
+        },
+        "description": {
+          "type": "string",
+          "description": "What the example demonstrates"
+        }
+      }
+    }
+  }
+}
