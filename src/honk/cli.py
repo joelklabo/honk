@@ -20,22 +20,57 @@ register_pack(global_pack)
 
 
 @app.command()
-def version():
+def version(
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+):
     """Show version information."""
-    print("honk version 0.1.0")
-    print("result schema version: 1.0")
+    if json_output:
+        envelope = result.ResultEnvelope(
+            command=["honk", "version"],
+            status="ok",
+            code="version.ok",
+            summary="Version information",
+            run_id="version",
+            duration_ms=0,
+            facts={
+                "honk_version": "0.1.0",
+                "schema_version": "1.0",
+            },
+        )
+        print(envelope.model_dump_json(indent=2))
+    else:
+        print("honk version 0.1.0")
+        print("result schema version: 1.0")
 
 
 @app.command()
-def info():
+def info(
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+):
     """Show CLI information."""
-    print("honk - Agent-first CLI for developer workflows")
-    print("Python package: honk")
+    if json_output:
+        envelope = result.ResultEnvelope(
+            command=["honk", "info"],
+            status="ok",
+            code="info.ok",
+            summary="CLI information",
+            run_id="info",
+            duration_ms=0,
+            facts={
+                "name": "honk",
+                "description": "Agent-first CLI for developer workflows",
+                "package": "honk",
+            },
+        )
+        print(envelope.model_dump_json(indent=2))
+    else:
+        print("honk - Agent-first CLI for developer workflows")
+        print("Python package: honk")
 
 
 @app.command()
 def introspect(
-    json_output: bool = typer.Option(True, "--json/--no-json", help="Output as JSON"),
+    json_output: bool = typer.Option(False, "--json/--no-json", help="Output as JSON"),
 ):
     """Emit command catalog with metadata for all commands."""
     schema = registry.get_introspection_schema()
@@ -49,9 +84,7 @@ def introspect(
 
 @app.command("help-json")
 def help_json(
-    command: str = typer.Argument(
-        ..., help="Command to get help for (e.g., 'version' or 'introspect')"
-    ),
+    command: str = typer.Argument(help="Command to get help for (e.g., 'version' or 'introspect')"),
 ):
     """Get machine-readable help for a specific command."""
     from . import help as help_module

@@ -61,6 +61,54 @@
 - Tooling: pytest 8.3.3, pytest-xdist 3.6.1, ruff 0.6.9, mypy 1.11.2, nox 2024.4.15, pre-commit hooks.
 - System CLIs: `gh` ≥ 2.58.0, `az` ≥ 2.63.0 (with DevOps extension), Node.js 20.13.1 via Volta when the optional Next.js site comes online.
 
+### Architecture Overview
+
+**CLI Structure:**
+- **Grammar:** `honk <area> <tool> <action>` - consistent three-level hierarchy
+- **Areas:** Top-level namespaces (e.g., `demo`, `auth`, `watchdog`) grouping related tools
+- **Plugin System:** Areas register via `entry_points(group="honk.areas")` or namespace scan
+- **Module Layout:**
+  ```
+  src/honk/
+  ├── cli.py              # Root Typer app, global options, plugin loader
+  ├── result.py           # Result envelope models and exit codes
+  ├── registry.py         # Command introspection metadata
+  ├── help.py             # JSON help schema generation
+  ├── internal/           # Shared systems (doctor, logging)
+  │   └── doctor/         # Prerequisite checking framework
+  ├── auth/               # Authentication subsystem
+  └── tools/<area>/       # Area-specific implementations
+      ├── __init__.py     # Area registration (exports register() function)
+      └── <tool>.py       # Tool commands (Typer sub-app)
+  ```
+
+**Result Envelope Pattern:**
+- Every command returns a structured `ResultEnvelope` (JSON schema: `schemas/result.v1.json`)
+- Required fields: `version`, `command`, `status`, `changed`, `code`, `summary`, `run_id`, `duration_ms`
+- Extended fields: `facts{}` (command output data), `pack_results[]` (doctor checks), `links[]` (docs/resources), `next[]` (suggested follow-up commands)
+- Exit codes: `0` (ok), `10` (prereq_failed), `11` (needs_auth), `12` (token_expired), `20` (network), `30` (system), `50` (bug), `60` (rate_limited)
+- Humans see Rich-formatted output; agents consume JSON via `--json` flag
+
+**Doctor Packs (Prerequisite System):**
+- Framework for checking requirements before command execution
+- Built-in packs: `global` (OS, disk, network), `auth-gh[scopes]`, `auth-az[org]`
+- Packs declare dependencies (`requires=["global"]`) and emit remediation steps
+- Commands call `run_all_packs(plan=plan)` before mutations
+- Results included in `pack_results[]` array of result envelope
+
+**Auth Subsystem:**
+- Providers: GitHub (`gh` CLI wrapper), Azure DevOps (`az devops` CLI wrapper)
+- Token storage: `keyring` library for secure credential management
+- Commands: `honk auth <provider> {status,ensure,login,refresh,logout}`
+- Auto-upgrade scopes via `gh auth refresh --scopes ...` or `az devops login`
+- Expiry warnings when PAT < 7 days remaining
+
+**Introspection System:**
+- `honk introspect --json` emits full command catalog (areas, tools, actions, args, prereqs, examples)
+- `honk help-json <command>` returns single-command schema
+- Registry populated via `register_command(CommandMetadata(...))` calls
+- Schema version: `schemas/introspect.v1.json`
+
 ### Coding Standards
 
 - Always run commands through `uv run …` (or an activated `.venv` created by uv) to guarantee the locked environment.
@@ -69,6 +117,43 @@
 - All temporary files, logs, or JSON streams belong under `tmp/` (never `/tmp`).
 - Update `docs/spec.md` when changing architecture, dependencies, or process expectations, and log the decision in `docs/plans/main.md`.
 - Keep lint/type/test suites passing locally (`uv run ruff check`, `uv run mypy`, `uv run pytest`) before sending changes upstream.
+
+### Adding New Tools (Quick Reference)
+
+When implementing a new tool (e.g., `honk watchdog pty`):
+
+1. **Create area structure** under `src/honk/tools/<area>/`:
+   - `__init__.py` - Area registration with `register(app: typer.Typer) -> AreaMetadata`
+   - `<tool>.py` - Typer sub-app with commands (actions)
+   - `<tool>_<module>.py` - Supporting logic (scanners, parsers, helpers)
+
+2. **Implement commands** following patterns:
+   - Call `run_all_packs(plan=plan)` for prerequisite checks
+   - Use `auth.ensure()` for authentication when needed
+   - Build `ResultEnvelope` with `facts`, `links`, `next` populated
+   - Support `--json`, `--plan`, `--no-color` flags
+   - Use Rich formatting for human output (panels, tables, status)
+
+3. **Register metadata** for introspection:
+   - Call `register_command(CommandMetadata(...))` for each action
+   - Include `area`, `tool`, `action`, `full_path`, `description`, `options`, `arguments`, `prereqs`, `examples`
+
+4. **Write tests** mirroring runtime layout:
+   - Unit: `tests/tools/<area>/test_<tool>_<module>.py`
+   - Integration: `tests/tools/<area>/test_<tool>_integration.py`
+   - Contract: `tests/contract/test_<area>_<tool>_contract.py` (schema validation)
+
+5. **Document**:
+   - Implementation spec in `docs/references/<tool>-spec.md`
+   - User guide in `docs/references/<tool>-guide.md` (optional)
+   - Update `docs/plans/main.md` with task tracking
+   - Update `docs/spec.md` if new patterns emerge
+
+6. **Verify**:
+   - `uv run honk <area> <tool> --help` renders correctly
+   - `uv run honk introspect --json` includes new commands
+   - All tests pass: `uv run pytest`
+   - Linting passes: `uv run ruff check && uv run mypy`
 
 ## Important Files & Directories
 
