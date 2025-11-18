@@ -1,4 +1,4 @@
-"""PTY watchdog commands."""
+"PTY watchdog commands."
 
 import sys
 import time
@@ -9,7 +9,7 @@ import os
 import typer
 
 from ..result import EXIT_OK, EXIT_PREREQ_FAILED, EXIT_SYSTEM
-from ..ui import console, print_success, print_error, print_info, progress_step
+from ..ui import console, print_success, print_error, print_info
 from .pty_scanner import scan_ptys, kill_processes, get_heavy_users, get_suspected_leaks
 
 pty_app = typer.Typer(help="PTY session monitoring and cleanup")
@@ -34,12 +34,8 @@ def show(
     no_color: bool = typer.Option(False, "--no-color", help="Disable color output"),
 ):
     """Display current PTY usage and detect potential leaks."""
-    if json_output:
-        os.environ["HONK_JSON_MODE"] = "1"
-    
     try:
-        with progress_step("Scanning PTYs"):
-            processes = scan_ptys()
+        processes = scan_ptys()
         total_ptys = sum(p.pty_count for p in processes.values())
         heavy_users = get_heavy_users(processes, threshold=4)
         suspected_leaks = get_suspected_leaks(processes, threshold=4)
@@ -115,13 +111,9 @@ def clean(
     no_color: bool = typer.Option(False, "--no-color", help="Disable color output"),
 ):
     """Kill processes with orphaned PTY sessions."""
-    if json_output:
-        os.environ["HONK_JSON_MODE"] = "1"
-    
     try:
         # Initial scan
-        with progress_step("Scanning PTYs"):
-            processes_before = scan_ptys()
+        processes_before = scan_ptys()
         total_ptys_before = sum(p.pty_count for p in processes_before.values())
         suspected_leaks = get_suspected_leaks(processes_before, threshold=threshold)
         
@@ -198,7 +190,7 @@ def clean(
                 "pty_count": p.pty_count,
                 "success": kill_results.get(p.pid, False)
             }
-            for p in suspected_leaks
+            for p in suspected_leaks if p.pid in pids_to_kill
         ]
         
         if json_output:
@@ -207,7 +199,7 @@ def clean(
                 status="ok",
                 changed=True,
                 code="watchdog.pty.clean.ok",
-                summary=f"Killed {len(suspected_leaks)} leaking processes, freed {freed_ptys} PTYs",
+                summary=f"Killed {len(killed_list)} leaking processes, freed {freed_ptys} PTYs",
                 facts={
                     "before": {"total_ptys": total_ptys_before, "process_count": len(processes_before)},
                     "after": {"total_ptys": total_ptys_after, "process_count": len(processes_after)},
@@ -319,6 +311,11 @@ def watch(
                 else:
                     console.print(status_line)
             
+            time.sleep(interval)
+        
+    except RuntimeError as e:
+        print_error(str(e))
+        sys.exit(EXIT_PREREQ_FAILED)
     except Exception as e:
         print_error(f"Internal error: {e}")
         sys.exit(EXIT_SYSTEM)

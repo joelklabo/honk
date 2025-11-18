@@ -2,3 +2,4 @@
 # Temporary files
 tmp/
 .editable-install-info
+\n# Python cache\n__pycache__/

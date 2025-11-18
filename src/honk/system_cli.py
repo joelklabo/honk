@@ -1,4 +1,4 @@
-"""System diagnostics commands."""
+"System diagnostics commands."
 
 import sys
 import typer
@@ -8,7 +8,7 @@ import psutil
 import time
 
 from .result import EXIT_OK, EXIT_SYSTEM
-from .ui import console, print_error
+from .ui import console, print_error, print_info
 from .watchdog.pty_scanner import scan_ptys
 
 system_app = typer.Typer(help="System diagnostics suite")
@@ -16,9 +16,7 @@ system_app = typer.Typer(help="System diagnostics suite")
 
 def get_process_count():
     """Get the total number of processes for the current user."""
-    # A simplified placeholder. A real implementation would be more robust.
     import subprocess
-    import os
     result = subprocess.run(['ps', '-U', str(os.getuid())], capture_output=True, text=True)
     return len(result.stdout.strip().split('\n'))
 
@@ -29,8 +27,6 @@ def summary(json_output: bool = typer.Option(False, "--json", help="Output as JS
     try:
         pty_processes = scan_ptys()
         total_ptys = sum(p.pty_count for p in pty_processes.values())
-        
-        # Placeholder for other metrics
         user_process_count = get_process_count()
         
         facts = {
@@ -71,10 +67,12 @@ def processes(
                 procs.append(p.info)
 
         if sort_by == 'cpu':
-            # The first call to cpu_percent is 0.0, so call it again after a short interval
             time.sleep(0.1)
             for p in procs:
-                p['cpu_percent'] = psutil.Process(p['pid']).cpu_percent()
+                try:
+                    p['cpu_percent'] = psutil.Process(p['pid']).cpu_percent()
+                except psutil.NoSuchProcess:
+                    p['cpu_percent'] = 0
             procs.sort(key=lambda x: x['cpu_percent'], reverse=True)
         elif sort_by == 'mem':
             procs.sort(key=lambda x: x['memory_percent'], reverse=True)
