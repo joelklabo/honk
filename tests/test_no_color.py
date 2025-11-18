@@ -1,6 +1,5 @@
 """Tests for --no-color flag and HONK_NO_COLOR environment variable."""
 
-import os
 from typer.testing import CliRunner
 from honk.cli import app
 

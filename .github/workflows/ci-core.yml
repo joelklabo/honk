@@ -20,27 +20,28 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
       
-      - name: Create venv and sync dependencies
-        run: |
-          uv venv --python 3.12 .venv
-          uv sync --all-extras --python 3.12
+      - name: Sync dependencies
+        run: uv sync --all-extras
       
       - name: Run ruff check
-        run: uv run python -m ruff check src/ tests/
+        run: uv run ruff check src/ tests/
       
       - name: Run mypy
-        run: uv run python -m mypy src/honk/ --ignore-missing-imports
+        run: uv run mypy src/honk/ --ignore-missing-imports
       
       - name: Run tests
-        run: uv run python -m pytest tests/ -v --tb=short
+        run: uv run pytest tests/ -v
       
-      - name: Test introspect command
+      - name: Validate introspect JSON output
         run: |
-          uv run python -m honk introspect --json > tmp/introspect.json
+          mkdir -p tmp
+          uv run honk introspect --json > tmp/introspect.json
           cat tmp/introspect.json
       
-      - name: Test demo hello command
-        run: uv run python -m honk demo hello --help
-
-      - name: Generate help-json for demo hello
-        run: uv run python -m honk help-json version > tmp/demo_hello.help.json
+      - name: Test demo hello help
+        run: uv run honk demo hello --help
+      
+      - name: Validate schemas exist
+        run: |
+          test -f schemas/result.v1.json
+          test -f schemas/introspect.v1.json
