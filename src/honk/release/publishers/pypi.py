@@ -56,7 +56,8 @@ class PyPIPublisher:
             return
         
         # Publish using uv
-        cmd = ["uv", "publish", "--token", token]
+        assert token is not None  # Already checked above
+        cmd: list[str] = ["uv", "publish", "--token", token]
         if repository != "pypi":
             cmd.extend(["--publish-url", "https://upload.pypi.org/legacy/"])
         

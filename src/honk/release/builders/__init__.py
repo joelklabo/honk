@@ -1,3 +1,3 @@
 """Artifact builders (PyPI, Homebrew, binaries)."""
 
-__all__ = []
+__all__: list[str] = []

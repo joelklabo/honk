@@ -52,7 +52,8 @@ class NotesAPI:
             BufferState with content, cursor position, dirty flag, etc.
         """
         try:
-            editor = self.app.query_one("#editor")
+            from textual.widgets import TextArea
+            editor = self.app.query_one("#editor", TextArea)
             return BufferState(
                 content=editor.text,
                 line_count=len(editor.text.splitlines()),
@@ -105,7 +106,8 @@ class NotesAPI:
             Buffer content as string
         """
         try:
-            return self.app.query_one("#editor").text
+            from textual.widgets import TextArea
+            return self.app.query_one("#editor", TextArea).text
         except Exception:
             return ""
     
@@ -116,7 +118,8 @@ class NotesAPI:
             content: New buffer content
         """
         try:
-            self.app.query_one("#editor").text = content
+            from textual.widgets import TextArea
+            self.app.query_one("#editor", TextArea).text = content
         except Exception:
             pass
     
@@ -127,7 +130,8 @@ class NotesAPI:
             text: Text to append
         """
         try:
-            editor = self.app.query_one("#editor")
+            from textual.widgets import TextArea
+            editor = self.app.query_one("#editor", TextArea)
             editor.text += text
         except Exception:
             pass
@@ -142,7 +146,8 @@ class NotesAPI:
             Line content or empty string if out of range
         """
         try:
-            lines = self.app.query_one("#editor").text.splitlines()
+            from textual.widgets import TextArea
+            lines = self.app.query_one("#editor", TextArea).text.splitlines()
             return lines[line_number] if 0 <= line_number < len(lines) else ""
         except Exception:
             return ""
@@ -155,10 +160,12 @@ class NotesAPI:
             content: New line content
         """
         try:
-            lines = self.app.query_one("#editor").text.splitlines()
+            from textual.widgets import TextArea
+            editor = self.app.query_one("#editor", TextArea)
+            lines = editor.text.splitlines()
             if 0 <= line_number < len(lines):
                 lines[line_number] = content
-                self.app.query_one("#editor").text = "\n".join(lines)
+                editor.text = "\n".join(lines)
         except Exception:
             pass
     

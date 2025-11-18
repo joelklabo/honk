@@ -77,8 +77,9 @@ class ProgressTracker:
             console: Rich Console (default: uses ui.console)
             transient: Clear display after completion (default: True)
         """
+        from rich.progress import TaskID
         self.transient = transient
-        self.current_task_id = None
+        self.current_task_id: TaskID | None = None
         self._silent = _is_json_mode()
 
         if self._silent:
@@ -139,7 +140,8 @@ class ProgressTracker:
         styled_desc = f"[{style}]{description}[/{style}]"
 
         # Add new task
-        self.current_task_id = self.progress.add_task(styled_desc, total=total)
+        if self.progress is not None:
+            self.current_task_id = self.progress.add_task(styled_desc, total=total)
 
     def advance(self, n: int = 1) -> None:
         """Advance current step progress by n units.
@@ -150,7 +152,8 @@ class ProgressTracker:
         if self._silent or self.current_task_id is None:
             return
 
-        self.progress.update(self.current_task_id, advance=n)
+        if self.progress is not None:
+            self.progress.update(self.current_task_id, advance=n)
 
     def complete(self, summary: str | None = None) -> None:
         """Complete tracking with optional summary message.

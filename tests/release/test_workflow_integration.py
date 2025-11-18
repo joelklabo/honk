@@ -30,8 +30,19 @@ class TestReleaseWorkflowIntegration:
     
     def test_execute_dry_run_does_not_commit(self, workflow):
         """Test dry run doesn't make changes."""
+        from honk.shared.git import Commit
+        from datetime import datetime
+        
         mock_commits = [
-            MagicMock(message="feat: new feature", sha="abc123")
+            Commit(
+                sha="abc123",
+                short_sha="abc123",
+                author="test",
+                email="test@example.com",
+                date=datetime.now(),
+                message="feat: new feature",
+                body=""
+            )
         ]
         
         with patch.object(workflow.git, 'is_working_tree_clean', return_value=True), \
@@ -49,14 +60,25 @@ class TestReleaseWorkflowIntegration:
     
     def test_execute_creates_commit_and_tag(self, workflow):
         """Test workflow creates commit and tag."""
+        from honk.shared.git import Commit
+        from datetime import datetime
+        
         mock_commits = [
-            MagicMock(message="feat: new feature", sha="abc123")
+            Commit(
+                sha="abc123",
+                short_sha="abc123",
+                author="test",
+                email="test@example.com",
+                date=datetime.now(),
+                message="feat: new feature",
+                body=""
+            )
         ]
         
         with patch.object(workflow.git, 'is_working_tree_clean', return_value=True), \
              patch.object(workflow.git, 'get_commits_since_last_tag', return_value=mock_commits), \
              patch.object(workflow.bumper, 'bump_version', return_value=("0.1.0", "0.2.0")), \
-             patch.object(workflow.bumper, 'get_version_files', return_value=[Path("pyproject.toml")]), \
+             patch.object(workflow.bumper, 'get_version_files', return_value=[workflow.project_root / "pyproject.toml"]), \
              patch.object(workflow.git, 'commit_files', return_value="def456") as mock_commit, \
              patch.object(workflow.git, 'create_tag') as mock_tag:
             
@@ -71,8 +93,19 @@ class TestReleaseWorkflowIntegration:
     
     def test_execute_with_explicit_release_type(self, workflow):
         """Test workflow with explicit release type."""
+        from honk.shared.git import Commit
+        from datetime import datetime
+        
         mock_commits = [
-            MagicMock(message="fix: bug fix", sha="abc123")
+            Commit(
+                sha="abc123",
+                short_sha="abc123",
+                author="test",
+                email="test@example.com",
+                date=datetime.now(),
+                message="fix: bug fix",
+                body=""
+            )
         ]
         
         with patch.object(workflow.git, 'is_working_tree_clean', return_value=True), \

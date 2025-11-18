@@ -55,8 +55,9 @@ class Config:
         config = self.load()
         
         # Handle dot notation: "release.ai_enabled"
+        from typing import Any
         keys = key.split(".")
-        value = config
+        value: dict[str, Any] | Any = config
         
         for k in keys:
             if isinstance(value, dict):

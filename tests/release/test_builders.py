@@ -21,10 +21,13 @@ class TestPyPIBuilder:
         mock_result = MagicMock()
         mock_result.returncode = 0
         
-        with patch('subprocess.run', return_value=mock_result), \
-             patch.object(builder.dist_dir, 'exists', return_value=True), \
-             patch.object(builder.dist_dir, 'glob', return_value=[Path("dist/pkg.tar.gz")]):
-            
+        def mock_build_side_effect(*args, **kwargs):
+            # Simulate build creating artifacts
+            builder.dist_dir.mkdir(exist_ok=True)
+            (builder.dist_dir / "pkg.tar.gz").touch()
+            return mock_result
+        
+        with patch('subprocess.run', side_effect=mock_build_side_effect):
             artifacts = builder.build()
             
             assert len(artifacts) == 1

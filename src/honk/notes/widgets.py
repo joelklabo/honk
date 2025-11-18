@@ -35,7 +35,7 @@ class StreamingTextArea(TextArea):
     ):
         super().__init__(**kwargs)
         self.idle_timeout = idle_timeout
-        self._idle_watcher = None
+        self._idle_watcher: asyncio.Task[None] | None = None
         self._update_lock = asyncio.Lock()
 
     def on_mount(self) -> None:
@@ -148,7 +148,7 @@ class ProcessingOverlay(Container):
         msg_widget = self.query_one("#progress-message", Static)
         msg_widget.update(Text(message, style="bold"))
 
-    def update_progress(self, percent: float, message: str = None) -> None:
+    def update_progress(self, percent: float, message: str | None = None) -> None:
         """Update progress bar with Honk's design aesthetic."""
         bar_length = 40
         filled = int(bar_length * percent)

@@ -64,7 +64,9 @@ class NotesConfig:
         
         if os.getenv("HONK_NOTES_API_PORT"):
             try:
-                config.api_port = int(os.getenv("HONK_NOTES_API_PORT"))
+                port_str = os.getenv("HONK_NOTES_API_PORT")
+                if port_str:
+                    config.api_port = int(port_str)
             except ValueError:
                 pass
         

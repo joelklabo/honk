@@ -286,7 +286,8 @@ def history(
         with open(LOG_FILE_PATH, "r") as f:
             lines = f.readlines()
             
-        entries = []
+        from typing import Any
+        entries: list[dict[str, Any]] = []
         for line in reversed(lines):
             if len(entries) >= limit:
                 break

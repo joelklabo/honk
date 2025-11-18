@@ -120,8 +120,8 @@ class ChangelogGenerator:
             changelog_file.write_text("\n".join(content))
         else:
             # Insert new entry after header
-            content = changelog_file.read_text()
-            lines = content.split("\n")
+            content_str = changelog_file.read_text()
+            lines: list[str] = content_str.split("\n")
             
             # Find insertion point (after header and intro)
             insert_idx = 0

@@ -65,7 +65,8 @@ class StreamingNotesApp(App):
         from .state import StateDetector
         self.api = NotesAPI(self)
         self.state_detector = StateDetector(self)
-        self.ipc_server = None
+        from typing import Any
+        self.ipc_server: Any = None
 
         if config.file_path and config.auto_save:
             self.auto_saver = AutoSaver(
@@ -103,7 +104,8 @@ class StreamingNotesApp(App):
             from .ipc import NotesIPCServer
 
             self.ipc_server = NotesIPCServer(self, self.config.api_port)
-            asyncio.create_task(self.ipc_server.start())
+            if self.ipc_server:
+                asyncio.create_task(self.ipc_server.start())
 
     def on_unmount(self) -> None:
         """Clean up resources on app exit."""
@@ -192,6 +194,6 @@ class StreamingNotesApp(App):
     
     async def action_quit(self) -> None:
         """Quit and cleanup."""
-        if self.ipc_server:
+        if self.ipc_server and hasattr(self.ipc_server, 'stop'):
             self.ipc_server.stop()
         await super().action_quit()

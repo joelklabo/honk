@@ -1,3 +1,3 @@
 """Changelog generation (traditional and AI-powered)."""
 
-__all__ = []
+__all__: list[str] = []

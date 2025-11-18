@@ -1,3 +1,3 @@
 """Version management and semantic versioning operations."""
 
-__all__ = []
+__all__: list[str] = []
