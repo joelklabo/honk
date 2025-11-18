@@ -1,0 +1,70 @@
+name: Schema Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.20"
+      
+      - name: Set up Python
+        run: uv python install 3.12
+      
+      - name: Create venv and sync dependencies
+        run: |
+          uv venv --python 3.12 .venv
+          uv sync --all-extras --python 3.12
+      
+      - name: Generate result envelope example
+        run: |
+          uv run python -m honk demo hello --json > tmp/result_example.json
+          echo "Generated result envelope:"
+          cat tmp/result_example.json
+      
+      - name: Generate help schema example
+        run: |
+          uv run python -m honk help-json version > tmp/help_example.json
+          echo "Generated help schema:"
+          cat tmp/help_example.json
+      
+      - name: Validate result envelope against schema
+        run: |
+          uv run python -c "
+          import json
+          import jsonschema
+          
+          with open('schemas/result.v1.json') as f:
+              schema = json.load(f)
+          
+          with open('tmp/result_example.json') as f:
+              instance = json.load(f)
+          
+          jsonschema.validate(instance, schema)
+          print('✓ Result envelope validates against schema')
+          "
+      
+      - name: Validate help schema example
+        run: |
+          uv run python -c "
+          import json
+          import jsonschema
+          
+          with open('schemas/help.v1.json') as f:
+              schema = json.load(f)
+          
+          with open('tmp/help_example.json') as f:
+              instance = json.load(f)
+          
+          jsonschema.validate(instance, schema)
+          print('✓ Help schema validates against schema')
+          "

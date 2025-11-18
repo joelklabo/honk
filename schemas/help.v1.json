@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/honk/schemas/help.v1.json",
+  "title": "Honk Help Schema v1.0",
+  "description": "Machine-readable help schema for honk commands",
+  "type": "object",
+  "required": ["version", "command", "description"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version"
+    },
+    "command": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Full command path"
+    },
+    "description": {
+      "type": "string",
+      "description": "Command description"
+    },
+    "arguments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string"},
+          "required": {"type": "boolean", "default": true},
+          "default": {},
+          "help": {"type": "string", "default": ""}
+        }
+      },
+      "default": [],
+      "description": "Command arguments"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["names", "type"],
+        "properties": {
+          "names": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "type": {"type": "string"},
+          "required": {"type": "boolean", "default": false},
+          "default": {},
+          "help": {"type": "string", "default": ""}
+        }
+      },
+      "default": [],
+      "description": "Command options"
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "description"],
+        "properties": {
+          "command": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      },
+      "default": [],
+      "description": "Usage examples"
+    },
+    "doctor_packs": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": [],
+      "description": "Required doctor packs"
+    },
+    "auth_scopes": {
+      "type": "object",
+      "default": {},
+      "description": "Required auth scopes by provider"
+    }
+  }
+}

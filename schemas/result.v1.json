@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/honk/schemas/result.v1.json",
+  "title": "Honk Result Envelope v1.0",
+  "description": "Standard result envelope for all honk commands",
+  "type": "object",
+  "required": ["version", "command", "status", "code", "summary", "run_id", "duration_ms"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Schema version"
+    },
+    "command": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Command path that was executed"
+    },
+    "status": {
+      "type": "string",
+      "description": "Status of the command execution"
+    },
+    "changed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the command made changes"
+    },
+    "code": {
+      "type": "string",
+      "description": "Machine-readable status code"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Human-readable summary"
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Unique identifier for this run"
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Execution duration in milliseconds"
+    },
+    "facts": {
+      "type": "object",
+      "default": {},
+      "description": "Command-specific facts and data"
+    },
+    "pack_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pack", "status", "duration_ms"],
+        "properties": {
+          "pack": {"type": "string"},
+          "status": {"type": "string", "enum": ["ok", "failed", "skipped"]},
+          "duration_ms": {"type": "integer", "minimum": 0}
+        }
+      },
+      "default": [],
+      "description": "Results from doctor pack checks"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rel", "href"],
+        "properties": {
+          "rel": {"type": "string"},
+          "href": {"type": "string", "format": "uri"}
+        }
+      },
+      "default": [],
+      "description": "Related resource links"
+    },
+    "next": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["run", "summary"],
+        "properties": {
+          "run": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "summary": {"type": "string"}
+        }
+      },
+      "default": [],
+      "description": "Suggested next commands"
+    },
+    "retry_after_secs": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Seconds to wait before retry (for rate limiting)"
+    }
+  }
+}
