@@ -103,3 +103,149 @@ def processes(
     except Exception as e:
         print_error(f"Internal error: {e}")
         sys.exit(EXIT_SYSTEM)
+
+
+@system_app.command("pty")
+def pty(json_output: bool = typer.Option(False, "--json", help="Output as JSON")):
+    """A detailed report of all processes currently holding PTYs."""
+    try:
+        pty_processes = scan_ptys()
+        
+        if json_output:
+            facts = [
+                {
+                    "pid": p.pid,
+                    "command": p.command,
+                    "pty_count": p.pty_count,
+                    "ptys": p.ptys,
+                }
+                for p in pty_processes.values()
+            ]
+            print(json.dumps({"command": "system pty", "status": "ok", "facts": facts}, indent=2))
+        else:
+            from rich.table import Table
+            table = Table(title="PTY Usage Details")
+            table.add_column("PID", justify="right")
+            table.add_column("Command")
+            table.add_column("PTY Count", justify="right")
+            table.add_column("PTYs")
+
+            sorted_procs = sorted(pty_processes.values(), key=lambda p: p.pty_count, reverse=True)
+
+            for p in sorted_procs:
+                pty_list = ", ".join(p.ptys)
+                table.add_row(
+                    str(p.pid),
+                    p.command,
+                    str(p.pty_count),
+                    pty_list
+                )
+            
+            console.print(table)
+
+        sys.exit(EXIT_OK)
+
+    except Exception as e:
+        print_error(f"Internal error: {e}")
+        sys.exit(EXIT_SYSTEM)
+
+
+@system_app.command("fds")
+def fds(
+    top: int = typer.Option(5, "--top", help="Number of top processes to show."),
+    pid: int = typer.Option(None, "--pid", help="Show open files for a specific PID."),
+):
+    """Report on file descriptor usage."""
+    try:
+        from rich.table import Table
+        if pid:
+            proc = psutil.Process(pid)
+            files = proc.open_files()
+            title = f"Open File Descriptors for PID {pid} ({proc.name()})"
+            table = Table(title=title)
+            table.add_column("Path")
+            table.add_column("Mode")
+            for f in files:
+                table.add_row(f.path, f.mode)
+            console.print(table)
+        else:
+            procs = []
+            for p in psutil.process_iter(['pid', 'name', 'username']):
+                if p.info['username'] == os.getlogin():
+                    try:
+                        p.info['num_fds'] = p.num_fds()
+                        procs.append(p.info)
+                    except psutil.AccessDenied:
+                        pass
+            
+            procs.sort(key=lambda x: x['num_fds'], reverse=True)
+
+            table = Table(title=f"Top {top} Processes by File Descriptor Count")
+            table.add_column("PID", justify="right")
+            table.add_column("Process Name")
+            table.add_column("FD Count", justify="right")
+
+            for p in procs[:top]:
+                table.add_row(
+                    str(p['pid']),
+                    p['name'],
+                    str(p['num_fds'])
+                )
+            console.print(table)
+
+        sys.exit(EXIT_OK)
+
+    except psutil.NoSuchProcess:
+        print_error(f"Process with PID {pid} not found.")
+        sys.exit(EXIT_SYSTEM)
+    except Exception as e:
+        print_error(f"Internal error: {e}")
+        sys.exit(EXIT_SYSTEM)
+
+
+@system_app.command("network")
+def network(
+    kind: str = typer.Option("listen", "--kind", help="Show 'listen' or 'established' connections."),
+):
+    """Show network connections."""
+    try:
+        if kind not in ["listen", "established"]:
+            print_error("Invalid kind: must be 'listen' or 'established'")
+            raise typer.Exit(1)
+
+        connections = psutil.net_connections(kind='inet')
+        
+        from rich.table import Table
+        title = f"Network Connections (Status: {kind.upper()})"
+        table = Table(title=title)
+        table.add_column("PID", justify="right")
+        table.add_column("Process Name")
+        table.add_column("Local Address")
+        table.add_column("Remote Address")
+        table.add_column("Status")
+
+        for conn in connections:
+            if conn.status and conn.status.lower() == kind:
+                try:
+                    p = psutil.Process(conn.pid)
+                    proc_name = p.name()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    proc_name = "?"
+
+                laddr = f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else ""
+                raddr = f"{conn.raddr.ip}:{conn.raddr.port}" if conn.raddr else ""
+                
+                table.add_row(
+                    str(conn.pid) if conn.pid else "",
+                    proc_name,
+                    laddr,
+                    raddr,
+                    conn.status
+                )
+        
+        console.print(table)
+        sys.exit(EXIT_OK)
+
+    except Exception as e:
+        print_error(f"Internal error: {e}")
+        sys.exit(EXIT_SYSTEM)

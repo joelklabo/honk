@@ -15,7 +15,6 @@ from typing import Iterator
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.console import Console
 
-from .theme import HONK_THEME
 
 
 def _is_json_mode() -> bool:
