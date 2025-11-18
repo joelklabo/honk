@@ -123,3 +123,65 @@ uv run mypy src/honk/
 ---
 
 **Note**: The editable install is already configured and working! Your changes to the source code will be immediately available when you run `honk`.
+
+## Progress UI Components
+
+### Overview
+
+Honk includes reusable progress components for showing feedback during long-running operations.
+
+### Usage
+
+```python
+from honk.ui import progress_step, progress_tracker
+
+# Simple spinner for single operation
+with progress_step("Loading data"):
+    data = load()
+
+# Multi-step progress
+with progress_tracker() as tracker:
+    tracker.step("Phase 1...")
+    work1()
+    
+    tracker.step("Phase 2", total=100)
+    for i in range(100):
+        work2(i)
+        tracker.advance()
+    
+    tracker.complete("Done!")
+```
+
+### Features
+
+- **Silent in --json mode** - No output pollution for agents
+- **Transient display** - Disappears after completion
+- **Semantic tokens** - Uses design system colors
+- **Context managers** - Automatic cleanup
+
+### Design Principles
+
+1. Show feedback for operations >2 seconds
+2. Use spinners for indeterminate operations
+3. Use progress bars when you can count steps
+4. Always respect --json mode (set HONK_JSON_MODE=1)
+
+### Examples in Codebase
+
+See `src/honk/watchdog/pty_cli.py` for real usage:
+- `show` command uses `progress_step()` during PTY scanning
+- `clean` command uses progress for scanning and cleanup
+
+### Testing
+
+```python
+def test_with_progress(monkeypatch):
+    monkeypatch.setenv("HONK_JSON_MODE", "1")  # Force silent
+    
+    with progress_step("Testing"):
+        work()
+    
+    # No output in JSON mode
+```
+
+See `tests/ui/test_progress.py` for comprehensive examples.

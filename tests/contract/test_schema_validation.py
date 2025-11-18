@@ -116,3 +116,5 @@ def test_doctor_json_output_validates():
     
     jsonschema.validate(output, schema)
     assert "pack_results" in output
+
+
