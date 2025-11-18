@@ -19,24 +19,20 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12
       
-      - name: Create venv and sync dependencies
-        run: |
-          uv venv --python 3.12 .venv
-          uv sync --all-extras --python 3.12
+      - name: Sync dependencies
+        run: uv sync --all-extras
       
       - name: Run ruff check
-        run: uv run python -m ruff check src/ tests/
+        run: uv run ruff check src/ tests/
       
       - name: Run mypy
-        run: uv run python -m mypy src/honk/ --ignore-missing-imports
+        run: uv run mypy src/honk/ --ignore-missing-imports
       
       - name: Run tests
-        run: uv run python -m pytest tests/ -m "not slow" -v --tb=short
+        run: uv run pytest tests/ -v
       
       - name: Build package
         run: uv build
       
-      - name: Publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: uv publish
+      - name: Publish to PyPI (dry-run, token not configured yet)
+        run: echo "Would publish with uv publish here"
