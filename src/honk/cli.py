@@ -145,18 +145,18 @@ def introspect(
 
 @app.command("help-json")
 def help_json(
-    command: str = typer.Argument(help="Command to get help for (e.g., 'version' or 'introspect')"),
+    command: list[str] = typer.Argument(help="Command path to get help for (e.g., 'version', 'demo hello', or 'auth gh status')"),
 ):
     """Get machine-readable help for a specific command."""
     from . import help as help_module
 
-    command_path = ["honk", command]
+    command_path = ["honk"] + command
     help_schema = help_module.get_command_help_from_registry(command_path)
 
     if help_schema:
         print(help_module.emit_help_json(help_schema))
     else:
-        print(f"Error: Command '{command}' not found", file=sys.stderr)
+        print(f"Error: Command '{' '.join(command)}' not found", file=sys.stderr)
         sys.exit(result.EXIT_BUG)
 
 
@@ -393,6 +393,52 @@ def _register_builtins():
                 registry.CommandExample(
                     command="honk doctor --json",
                     description="Get check results as JSON",
+                ),
+            ],
+        )
+    )
+    
+    # Register demo commands
+    registry.register_command(
+        registry.CommandMetadata(
+            area="demo",
+            tool="hello",
+            action="run",
+            full_path=["honk", "demo", "hello"],
+            description="Demo command demonstrating full CLI contract with prereqs, result envelope, and flags",
+            options=[
+                registry.CommandOption(
+                    names=["--name"],
+                    type_hint="str",
+                    default="World",
+                    help="Name to greet",
+                ),
+                registry.CommandOption(
+                    names=["--json"],
+                    type_hint="bool",
+                    default=False,
+                    help="Output as JSON",
+                ),
+                registry.CommandOption(
+                    names=["--plan"],
+                    type_hint="bool",
+                    default=False,
+                    help="Run in plan mode (dry-run)",
+                ),
+            ],
+            prereqs=["global"],
+            examples=[
+                registry.CommandExample(
+                    command="honk demo hello",
+                    description="Run demo with default greeting",
+                ),
+                registry.CommandExample(
+                    command="honk demo hello --name Alice",
+                    description="Greet Alice",
+                ),
+                registry.CommandExample(
+                    command="honk demo hello --json",
+                    description="Get result as JSON envelope",
                 ),
             ],
         )
