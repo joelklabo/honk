@@ -318,3 +318,167 @@ def history(
     except Exception as e:
         print_error(f"Failed to read or parse log file: {e}")
         sys.exit(EXIT_SYSTEM)
+
+
+@pty_app.command("daemon")
+def daemon(
+    start: bool = typer.Option(False, "--start", help="Start daemon in background"),
+    stop: bool = typer.Option(False, "--stop", help="Stop running daemon"),
+    status: bool = typer.Option(False, "--status", help="Check daemon status"),
+    scan_interval: int = typer.Option(30, "--scan-interval", help="Seconds between scans"),
+    auto_kill_threshold: int = typer.Option(0, "--auto-kill-threshold", help="Auto-kill processes above this PTY count (0=disabled)"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+):
+    """Background PTY monitoring service with caching."""
+    from .pty_daemon import PTYDaemon, DaemonConfig
+    from pathlib import Path
+    
+    config = DaemonConfig(
+        scan_interval=scan_interval,
+        auto_kill_threshold=auto_kill_threshold
+    )
+    
+    daemon_obj = PTYDaemon(config)
+    
+    # Determine action
+    if not any([start, stop, status]):
+        status = True  # Default to status if no action specified
+    
+    try:
+        if start:
+            result = daemon_obj.start()
+            if result["success"]:
+                facts = {
+                    "pid": result["pid"],
+                    "scan_interval": result["scan_interval"],
+                    "auto_kill_threshold": result["auto_kill_threshold"],
+                    "cache_file": result["cache_file"],
+                    "log_file": result["log_file"]
+                }
+                
+                if json_output:
+                    envelope = build_result_envelope(
+                        command=["honk", "watchdog", "pty", "daemon", "--start"],
+                        status="ok",
+                        changed=True,
+                        code="watchdog.pty.daemon.started",
+                        summary=f"PTY daemon started (PID {result['pid']})",
+                        facts=facts
+                    )
+                    print(json.dumps(envelope, indent=2))
+                else:
+                    print_success(f"PTY daemon started (PID {result['pid']})")
+                    console.print(f"Scan interval: [bold]{scan_interval}s[/bold]")
+                    console.print(f"Cache file: [dim]{result['cache_file']}[/dim]")
+                    console.print(f"Log file: [dim]{result['log_file']}[/dim]")
+                    console.print("\nView live data: [bold]honk watchdog pty observer[/bold]")
+                sys.exit(EXIT_OK)
+            else:
+                if json_output:
+                    envelope = build_result_envelope(
+                        command=["honk", "watchdog", "pty", "daemon", "--start"],
+                        status="error",
+                        changed=False,
+                        code="watchdog.pty.daemon.start_failed",
+                        summary=result["error"],
+                        facts={}
+                    )
+                    print(json.dumps(envelope, indent=2))
+                else:
+                    print_error(result["error"])
+                sys.exit(EXIT_SYSTEM)
+        
+        elif stop:
+            result = daemon_obj.stop()
+            if result["success"]:
+                if json_output:
+                    envelope = build_result_envelope(
+                        command=["honk", "watchdog", "pty", "daemon", "--stop"],
+                        status="ok",
+                        changed=True,
+                        code="watchdog.pty.daemon.stopped",
+                        summary=f"PTY daemon stopped (PID {result['pid']})",
+                        facts={"pid": result["pid"]}
+                    )
+                    print(json.dumps(envelope, indent=2))
+                else:
+                    print_success(f"PTY daemon stopped (PID {result['pid']})")
+                sys.exit(EXIT_OK)
+            else:
+                if json_output:
+                    envelope = build_result_envelope(
+                        command=["honk", "watchdog", "pty", "daemon", "--stop"],
+                        status="error",
+                        changed=False,
+                        code="watchdog.pty.daemon.stop_failed",
+                        summary=result["error"],
+                        facts={}
+                    )
+                    print(json.dumps(envelope, indent=2))
+                else:
+                    print_error(result["error"])
+                sys.exit(EXIT_SYSTEM)
+        
+        elif status:
+            result = daemon_obj.status()
+            
+            if result["running"]:
+                facts = {
+                    "running": True,
+                    "pid": result["pid"],
+                    "cache_age_seconds": result.get("cache_age_seconds"),
+                    "cache_stale": result.get("cache_stale", False),
+                    "last_scan": result.get("last_scan"),
+                    "scan_count": result.get("scan_count")
+                }
+                
+                if json_output:
+                    envelope = build_result_envelope(
+                        command=["honk", "watchdog", "pty", "daemon", "--status"],
+                        status="ok",
+                        changed=False,
+                        code="watchdog.pty.daemon.running",
+                        summary=f"PTY daemon running (PID {result['pid']})",
+                        facts=facts
+                    )
+                    print(json.dumps(envelope, indent=2))
+                else:
+                    console.print(f"\n[green]✓[/green] PTY daemon is running")
+                    console.print(f"  PID: [bold]{result['pid']}[/bold]")
+                    if result.get("last_scan"):
+                        console.print(f"  Last scan: [dim]{result['last_scan']}[/dim]")
+                    if result.get("cache_age_seconds"):
+                        console.print(f"  Cache age: [dim]{result['cache_age_seconds']}s[/dim]")
+                    if result.get("cache_stale"):
+                        console.print("  [yellow]⚠ Cache is stale[/yellow]")
+                sys.exit(EXIT_OK)
+            else:
+                if json_output:
+                    envelope = build_result_envelope(
+                        command=["honk", "watchdog", "pty", "daemon", "--status"],
+                        status="ok",
+                        changed=False,
+                        code="watchdog.pty.daemon.not_running",
+                        summary="PTY daemon not running",
+                        facts={"running": False}
+                    )
+                    print(json.dumps(envelope, indent=2))
+                else:
+                    console.print("\n[red]✗[/red] PTY daemon is not running")
+                    console.print("  Start it with: [bold]honk watchdog pty daemon --start[/bold]")
+                sys.exit(EXIT_OK)
+    
+    except Exception as e:
+        if json_output:
+            envelope = build_result_envelope(
+                command=["honk", "watchdog", "pty", "daemon"],
+                status="error",
+                changed=False,
+                code="watchdog.pty.daemon.error",
+                summary=str(e),
+                facts={}
+            )
+            print(json.dumps(envelope, indent=2))
+        else:
+            print_error(f"Daemon error: {e}")
+        sys.exit(EXIT_SYSTEM)
