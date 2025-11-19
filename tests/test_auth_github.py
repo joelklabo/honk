@@ -83,12 +83,8 @@ class TestGitHubAuthStatus:
         output = json.loads(result.stdout)
         assert output["facts"]["auth"]["hostname"] == "github.example.com"
 
-    @patch("honk.auth.providers.github.subprocess.run")
-    def test_status_shows_expiry_warning(self, mock_run):
-        """Test status warns when token expires soon."""
-        # For now, skip expiry warning test as it requires additional implementation
-        # This will be implemented when we add expiry tracking
-        pytest.skip("Expiry warning not yet implemented")
+    # TODO: Add test_status_shows_expiry_warning when expiry tracking is implemented
+    # See docs/spec-auth.md for specification
 
 
 class TestGitHubAuthLogin:
