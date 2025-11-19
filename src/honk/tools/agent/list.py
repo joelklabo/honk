@@ -14,15 +14,34 @@ def list_agents(
     location: Optional[str] = typer.Option(
         "project",
         "--location", "-l",
-        help="Where to list agents from: 'project' (.github/agents), 'global' (~/.copilot/agents), 'all'"
+        help="Location: 'project' (.github/agents), 'global' (~/.copilot/agents), or 'all'"
     )
 ):
     """
-    List all available agents.
+    List all available GitHub Copilot custom agents.
     
-    Lists agents from project directory (.github/agents/) by default,
-    or from global directory (~/.copilot/agents/) with --location global,
-    or from both with --location all.
+    Shows agent names and descriptions from project or global directories.
+    Descriptions are extracted from agent YAML frontmatter.
+    
+    Locations:
+      project - .github/agents/ (default, project-specific agents)
+      global  - ~/.copilot/agents/ (user's personal agents)
+      all     - Both project and global agents
+    
+    Examples:
+      # List project agents
+      honk agent list agents
+      
+      # List user's global agents
+      honk agent list agents --location global
+      
+      # List all agents
+      honk agent list agents -l all
+    
+    Output format:
+      agent-name           - Description from YAML frontmatter
+      
+    Note: Long descriptions (>60 chars) are truncated with '...'
     """
     project_agents_dir = Path(".github/agents")
     global_agents_dir = Path.home() / ".copilot/agents"

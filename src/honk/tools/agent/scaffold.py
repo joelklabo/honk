@@ -19,36 +19,66 @@ def create_agent(
     name: Optional[str] = typer.Option(
         None,
         "--name", "-n",
-        help="Name for the new agent (e.g., 'researcher')."
+        help="Agent name in kebab-case (e.g., 'code-reviewer', 'researcher')"
     ),
     description: Optional[str] = typer.Option(
         None,
         "--description", "-d",
-        help="Brief description of what the agent does."
+        help="Clear description of agent's purpose (10-200 chars)"
     ),
     tools: Optional[str] = typer.Option(
         None,
         "--tools", "-t",
-        help="Comma-separated list of tools the agent can use (e.g., 'read,search'). Use '*' for all."
+        help="Tools: 'read,edit,search,shell,web_search' or '*' for all"
     ),
     location: str = typer.Option(
         "project",
         "--location", "-l",
-        help="Where to create the agent: 'project' (.github/agents), 'user' (~/.copilot/agents)."
+        help="Location: 'project' (.github/agents) or 'user' (~/.copilot/agents)"
     ),
     template: Optional[str] = typer.Option(
         None,
         "--template", "-T",
-        help="Name of a built-in or custom template to use (e.g., 'research', 'test-writer')."
+        help="Template name: 'default', 'research', 'test-writer', etc. (see 'honk agent template list')"
     ),
     interactive: bool = typer.Option(
         False,
         "--interactive", "-i",
-        help="Run in interactive mode to be prompted for details."
+        help="Interactive mode: prompts for all inputs"
     ),
 ):
     """
-    Generate a new custom agent from template or interactive prompts.
+    Create a new GitHub Copilot custom agent from a template.
+    
+    Generates agent file with YAML frontmatter and markdown instructions,
+    validates against schema, and adds to git staging automatically.
+    
+    Examples:
+      # Create basic agent
+      honk agent scaffold create -n researcher -d "Expert research agent" -t read,search
+      
+      # Create from specific template
+      honk agent scaffold create -n tester -d "Test specialist" -t read,edit -T test-writer
+      
+      # Interactive mode
+      honk agent scaffold create --interactive
+      
+      # Create in user directory
+      honk agent scaffold create -n my-agent -d "Personal agent" -t "*" -l user
+    
+    Available tools:
+      read        - Read files and directories
+      edit        - Modify files
+      search      - Search codebase
+      shell       - Execute shell commands
+      web_search  - Search the web
+      *           - All tools
+    
+    Next steps after creation:
+      1. Review generated file: .github/agents/<name>.agent.md
+      2. Customize instructions section
+      3. Test: Use agent with GitHub Copilot CLI
+      4. Commit: git commit -m "Add <name> agent"
     """
     if not interactive and (not name or not description or not tools):
         print_error("In non-interactive mode, --name, --description, and --tools are required.")
