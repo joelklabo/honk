@@ -1,0 +1,83 @@
+"""List command for honk agent."""
+import typer
+from pathlib import Path
+from typing import Optional
+import yaml
+
+from honk.ui import console, print_error
+
+list_app = typer.Typer()
+
+
+@list_app.command("agents")
+def list_agents(
+    location: Optional[str] = typer.Option(
+        "project",
+        "--location", "-l",
+        help="Where to list agents from: 'project' (.github/agents), 'global' (~/.copilot/agents), 'all'"
+    )
+):
+    """
+    List all available agents.
+    
+    Lists agents from project directory (.github/agents/) by default,
+    or from global directory (~/.copilot/agents/) with --location global,
+    or from both with --location all.
+    """
+    project_agents_dir = Path(".github/agents")
+    global_agents_dir = Path.home() / ".copilot/agents"
+    
+    total_count = 0
+    
+    if location in ["project", "all"]:
+        console.print("[bold]Project Agents[/bold] (.github/agents/):")
+        if project_agents_dir.exists():
+            agents = list(project_agents_dir.glob("*.agent.md"))
+            if agents:
+                for agent_file in sorted(agents):
+                    name = agent_file.stem
+                    description = _extract_description(agent_file)
+                    console.print(f"  [info]{name:20}[/info] - {description}")
+                    total_count += 1
+            else:
+                console.print("  [dim](No agents found)[/dim]")
+        else:
+            console.print("  [dim](Directory not found)[/dim]")
+        console.print()
+    
+    if location in ["global", "all"]:
+        console.print("[bold]Global Agents[/bold] (~/.copilot/agents/):")
+        if global_agents_dir.exists():
+            agents = list(global_agents_dir.glob("*.agent.md"))
+            if agents:
+                for agent_file in sorted(agents):
+                    name = agent_file.stem
+                    description = _extract_description(agent_file)
+                    console.print(f"  [info]{name:20}[/info] - {description}")
+                    total_count += 1
+            else:
+                console.print("  [dim](No agents found)[/dim]")
+        else:
+            console.print("  [dim](Directory not found)[/dim]")
+        console.print()
+    
+    console.print(f"[bold]Total:[/bold] {total_count} agent(s)")
+
+
+def _extract_description(agent_file: Path) -> str:
+    """Extract description from agent YAML frontmatter."""
+    try:
+        content = agent_file.read_text()
+        # Extract frontmatter
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            frontmatter = yaml.safe_load(parts[1])
+            if frontmatter and "description" in frontmatter:
+                desc = frontmatter["description"]
+                # Truncate if too long
+                if len(desc) > 60:
+                    desc = desc[:57] + "..."
+                return desc
+    except Exception:
+        pass
+    return "[dim](No description)[/dim]"
