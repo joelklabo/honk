@@ -7,14 +7,14 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "Unique name for the agent",
+      "description": "Unique identifier for the agent",
       "pattern": "^[a-z0-9-]+$",
       "minLength": 3,
       "maxLength": 50
     },
     "description": {
       "type": "string",
-      "description": "Describes the agent's purpose and capabilities",
+      "description": "Clear description of agent's purpose and capabilities",
       "minLength": 10,
       "maxLength": 200
     },
@@ -30,7 +30,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["read", "edit", "search", "shell", "*"]
+            "enum": ["read", "edit", "search", "shell", "web_search", "*"]
           },
           "minItems": 1,
           "uniqueItems": true
@@ -40,13 +40,16 @@
           "enum": ["*"]
         }
       ],
-      "description": "Tools the agent is allowed to use"
+      "description": "Tools the agent is allowed to use (omit for all tools)"
     },
     "mcp-servers": {
       "type": "object",
-      "description": "Additional MCP server configurations",
+      "description": "Model Context Protocol server configurations",
       "additionalProperties": {
-        "type": "object"
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       }
     },
     "metadata": {
@@ -64,8 +67,16 @@
         },
         "category": {
           "type": "string",
-          "description": "Category or domain of the agent",
-          "enum": ["research", "testing", "documentation", "review", "refactor", "debug", "architecture", "other"]
+          "description": "Agent category or domain",
+          "enum": ["research", "testing", "documentation", "review", "refactor", "debug", "architecture", "devops", "security", "other"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date"
         }
       },
       "additionalProperties": true
