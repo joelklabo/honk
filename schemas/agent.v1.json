@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://honk.dev/schemas/agent.v1.json",
+  "title": "GitHub Copilot Agent Configuration",
+  "description": "Schema for validating GitHub Copilot custom agent YAML frontmatter",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique name for the agent",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 3,
+      "maxLength": 50
+    },
+    "description": {
+      "type": "string",
+      "description": "Describes the agent's purpose and capabilities",
+      "minLength": 10,
+      "maxLength": 200
+    },
+    "target": {
+      "type": "string",
+      "description": "Target environment for the agent",
+      "enum": ["vscode", "github-copilot", "both"],
+      "default": "github-copilot"
+    },
+    "tools": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["read", "edit", "search", "shell", "*"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        {
+          "type": "string",
+          "enum": ["*"]
+        }
+      ],
+      "description": "Tools the agent is allowed to use"
+    },
+    "mcp-servers": {
+      "type": "object",
+      "description": "Additional MCP server configurations",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Custom metadata key-value pairs",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "Team or person responsible for this agent"
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version of the agent",
+          "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category or domain of the agent",
+          "enum": ["research", "testing", "documentation", "review", "refactor", "debug", "architecture", "other"]
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": ["description"],
+  "additionalProperties": false
+}

@@ -14,7 +14,7 @@ class NotesConfig:
     file_path: Optional[Path] = None
     auto_save: bool = True
     auto_save_interval: float = 2.0  # seconds
-    default_notes_dir: Path = Path.home() / ".honk" / "notes" / "punk_managers"
+    default_notes_dir: Path = Path.home() / ".honk" / "notes" / "scratchpad"
 
     # AI organization
     idle_timeout: int = 30  # seconds

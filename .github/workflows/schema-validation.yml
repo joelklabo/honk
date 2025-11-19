@@ -27,6 +27,7 @@ jobs:
       
       - name: Generate result envelope example
         run: |
+          mkdir -p tmp
           uv run python -m honk demo hello --json > tmp/result_example.json
           echo "Generated result envelope:"
           cat tmp/result_example.json
