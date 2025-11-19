@@ -30,7 +30,7 @@ honk watchdog pty <action> [options]
 
 **Area:** `watchdog` (system health monitoring)  
 **Tool:** `pty` (PTY session management)  
-**Actions:** `show`, `clean`, `watch`
+**Actions:** `show`, `clean`, `watch`, `daemon`, `observer`
 
 ### Grammar Alignment
 
@@ -41,6 +41,8 @@ Following Honk's `<area> <tool> <action>` pattern:
   - `show` - display current PTY usage
   - `clean` - kill leaking processes
   - `watch` - monitor and auto-clean
+  - `daemon` - background PTY monitoring service
+  - `observer` - TUI dashboard for cached PTY data
 
 ---
 
@@ -877,6 +879,272 @@ Increase `--threshold` or exclude specific patterns (future feature).
 - [ ] macOS-specific tests pass in `ci-macos` workflow
 - [ ] Help output validated in contract tests
 - [ ] No regressions in existing commands
+
+---
+
+### 4. `honk watchdog pty daemon`
+
+**Purpose:** Background service for continuous PTY monitoring with caching.
+
+**Signature:**
+```bash
+honk watchdog pty daemon [--start|--stop|--status] [--scan-interval SECONDS] [--auto-kill-threshold NUM] [--json]
+```
+
+**Options:**
+- `--start` (bool): Start daemon in background (detached process)
+- `--stop` (bool): Stop running daemon gracefully
+- `--status` (bool): Check if daemon is running
+- `--scan-interval` (int, default: 30): Seconds between PTY scans
+- `--auto-kill-threshold` (int, default: 0): Auto-kill processes above this PTY count (0=disabled)
+- `--json` (bool): Output result envelope
+
+**Behavior:**
+
+**Start Mode (`--start`):**
+1. Check if daemon already running (PID file exists)
+2. Fork detached process using `subprocess.Popen` with `start_new_session=True`
+3. Write PID to `tmp/pty-daemon.pid`
+4. Daemon loop:
+   - Scan PTYs every `--scan-interval` seconds
+   - Write results to `tmp/pty-cache.json` atomically
+   - If `--auto-kill-threshold` > 0, kill processes exceeding threshold
+   - Log activity to `tmp/pty-daemon.log`
+5. Handle SIGTERM for graceful shutdown
+
+**Stop Mode (`--stop`):**
+1. Read PID from `tmp/pty-daemon.pid`
+2. Send SIGTERM to process
+3. Wait up to 5s for clean exit
+4. Remove PID file
+5. Return success or error envelope
+
+**Status Mode (`--status`):**
+1. Check if PID file exists
+2. Verify process is alive: `os.kill(pid, 0)`
+3. Read cache timestamp from `tmp/pty-cache.json`
+4. Return status envelope with facts
+
+**Exit Codes:**
+- `0` - Success
+- `10` - Prerequisites failed
+- `30` - System error (can't start/stop daemon)
+- `50` - Internal error
+
+**Result Envelope (start):**
+```json
+{
+  "version": "1.0",
+  "command": ["honk", "watchdog", "pty", "daemon", "--start"],
+  "status": "ok",
+  "changed": true,
+  "code": "watchdog.pty.daemon.started",
+  "summary": "PTY monitoring daemon started",
+  "run_id": "uuid",
+  "duration_ms": 50,
+  "facts": {
+    "pid": 12345,
+    "scan_interval": 30,
+    "auto_kill_threshold": 0,
+    "cache_file": "tmp/pty-cache.json",
+    "log_file": "tmp/pty-daemon.log"
+  },
+  "next": [
+    {
+      "run": ["honk", "watchdog", "pty", "daemon", "--status"],
+      "summary": "Check daemon status"
+    },
+    {
+      "run": ["honk", "watchdog", "pty", "observer"],
+      "summary": "View live PTY data"
+    }
+  ]
+}
+```
+
+**Cache File Format (`tmp/pty-cache.json`):**
+```json
+{
+  "timestamp": "2025-11-19T08:00:00Z",
+  "scan_number": 42,
+  "total_ptys": 247,
+  "process_count": 18,
+  "processes": [
+    {
+      "pid": 12345,
+      "command": "node copilot-agent",
+      "pty_count": 87,
+      "ptys": ["/dev/ttys001", "..."],
+      "first_seen": "2025-11-19T07:30:00Z",
+      "last_seen": "2025-11-19T08:00:00Z"
+    }
+  ],
+  "heavy_users": [...],
+  "suspected_leaks": [...]
+}
+```
+
+**Implementation Notes:**
+- Use Python's `daemon` library or manual fork/detach
+- Atomic writes to cache (write to temp, then rename)
+- Graceful signal handling (SIGTERM → cleanup → exit)
+- PID file locking to prevent multiple daemons
+- Log rotation for daemon log file
+
+---
+
+### 5. `honk watchdog pty observer`
+
+**Purpose:** TUI dashboard displaying cached PTY data from daemon.
+
+**Signature:**
+```bash
+honk watchdog pty observer [--live] [--history MINUTES]
+```
+
+**Options:**
+- `--live` (bool, default: true): Auto-refresh display every 5s
+- `--history` (int, default: 60): Show data from last N minutes
+- No `--json` (this is interactive TUI only)
+
+**Behavior:**
+1. Check if daemon is running (warn if not)
+2. Read `tmp/pty-cache.json` for current data
+3. Launch Textual TUI application
+4. Display dashboard with:
+   - **Header:** Timestamp, scan interval, daemon status
+   - **Summary Cards:** Total PTYs, process count, heavy users count
+   - **Line Chart:** PTY usage over time (if history data exists)
+   - **Process Table:** PID, command, PTY count, actions
+   - **Footer:** Keyboard shortcuts
+5. Auto-refresh every 5s if `--live`
+6. Handle keyboard commands:
+   - `q` - Quit
+   - `k` - Kill selected process
+   - `r` - Refresh now
+   - `↑/↓` - Navigate process list
+   - `Enter` - View process details
+
+**Exit Codes:**
+- `0` - Normal exit (user quit)
+- `10` - Prerequisites failed (Textual not installed)
+- `30` - System error (can't read cache)
+
+**TUI Layout (Textual):**
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ PTY Monitor Dashboard                    Last scan: 2s ago     ┃
+┃ Daemon: ● Running (PID 12345)           Scan interval: 30s     ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│  │ Total PTYs   │  │ Processes    │  │ Heavy Users  │        │
+│  │    247       │  │      18      │  │       3      │        │
+│  └──────────────┘  └──────────────┘  └──────────────┘        │
+│                                                                 │
+│  PTY Usage (Last Hour)                                         │
+│  ┌───────────────────────────────────────────────────────┐    │
+│  │ 300├╮                                                  │    │
+│  │    │ ╰╮                                                │    │
+│  │ 200│  ╰─╮                                              │    │
+│  │    │    ╰──╮                                           │    │
+│  │ 100│       ╰────────                                   │    │
+│  │   0└───────────────────────────────────────────────── │    │
+│  └───────────────────────────────────────────────────────┘    │
+│                                                                 │
+│  Active Processes                                              │
+│  ┌──────┬──────────────────────────┬──────────┬─────────┐    │
+│  │ PID  │ Command                  │ PTY Count│ Actions │    │
+│  ├──────┼──────────────────────────┼──────────┼─────────┤    │
+│  │12345 │ node copilot-agent       │    87    │ [Kill]  │ ◄─ │
+│  │12346 │ python honk.py           │    42    │ [Kill]  │    │
+│  │12347 │ zsh                      │     5    │ [Kill]  │    │
+│  └──────┴──────────────────────────┴──────────┴─────────┘    │
+│                                                                 │
+│  [q] Quit  [k] Kill  [r] Refresh  [↑↓] Navigate               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation Notes:**
+- Use Textual library (already in dependencies: 0.61.0)
+- Reactive components that update on timer
+- Confirm before killing processes (modal dialog)
+- Show kill results inline
+- Graceful fallback if cache file missing/corrupt
+- Warn if cache is stale (>2x scan_interval)
+
+---
+
+### 6. Process Ranking Algorithm
+
+**Purpose:** Define criteria for ranking processes when auto-killing.
+
+**Ranking Score Formula:**
+```python
+score = (
+    pty_count * 10.0 +              # Primary: PTY count
+    process_age_hours * 2.0 +       # Secondary: Age (newer = higher score)
+    is_copilot_like * 50.0 +        # Boost: Known leak patterns
+    is_orphaned * 30.0 +            # Boost: No parent process
+    cpu_percent * 0.1 +             # Minor: CPU usage (idle first)
+    memory_mb * 0.001               # Minor: Memory usage
+)
+```
+
+**Ranking Criteria (in priority order):**
+
+1. **PTY Count** (weight: 10.0)
+   - Most important factor
+   - Process using 50 PTYs scores higher than 5 PTYs
+
+2. **Process Age** (weight: 2.0)
+   - Newer processes are more likely to be leaks
+   - Calculated from process start time
+
+3. **Copilot/Node Pattern** (weight: 50.0)
+   - Command contains "copilot", "node", or "agent"
+   - Heuristic for known leak sources
+
+4. **Orphaned Status** (weight: 30.0)
+   - Parent process no longer exists (PPID = 1)
+   - Likely zombie/leak
+
+5. **CPU Usage** (weight: 0.1)
+   - Idle processes (0% CPU) rank higher
+   - Active processes left alone
+
+6. **Memory Usage** (weight: 0.001)
+   - Minor tie-breaker
+   - Higher memory = slightly higher score
+
+**Safety Rules:**
+- Never kill processes owned by other users
+- Never kill processes with PID < 1000 (system processes)
+- Never kill self (current Python process)
+- Require explicit threshold (no auto-kill by default)
+- Confirmation required in interactive mode
+- Log all kills with justification
+
+**Example Ranking:**
+```python
+Process A: node copilot-agent
+  - PTY count: 87 (870 pts)
+  - Age: 2 hours (4 pts)
+  - Copilot-like: yes (50 pts)
+  - Orphaned: no (0 pts)
+  - CPU: 0.1% (0.01 pts)
+  - Memory: 200MB (0.2 pts)
+  Total: 924.21 pts → RANK 1 (kill first)
+
+Process B: zsh
+  - PTY count: 5 (50 pts)
+  - Age: 10 hours (20 pts)
+  - Copilot-like: no (0 pts)
+  - Orphaned: no (0 pts)
+  - CPU: 2% (0.2 pts)
+  - Memory: 50MB (0.05 pts)
+  Total: 70.25 pts → RANK 2 (kill after A if needed)
+```
 
 ---
 
