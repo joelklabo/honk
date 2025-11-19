@@ -21,14 +21,25 @@ class PTYProcess:
 
 def run_lsof() -> str:
     """Execute lsof to enumerate PTYs."""
+    import glob
+    
     try:
-        return subprocess.check_output(
-            ["lsof", "-FpcnT"],
-            text=True,
-            stderr=subprocess.DEVNULL
+        # Find all /dev/ttys* devices (terminal PTYs on macOS/BSD)
+        pty_devices = glob.glob("/dev/ttys*")
+        if not pty_devices:
+            # No PTY devices found
+            return ""
+        
+        # Scan only PTY devices to avoid hanging on large systems
+        # Note: lsof returns exit code 1 when some files can't be accessed,
+        # but still outputs what it can, so we use run() instead of check_output()
+        result = subprocess.run(
+            ["lsof", "-FpcnT"] + pty_devices,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True
         )
-    except subprocess.CalledProcessError:
-        return ""
+        return result.stdout
     except FileNotFoundError:
         raise RuntimeError("lsof not found - install it via Homebrew or system package manager")
 
