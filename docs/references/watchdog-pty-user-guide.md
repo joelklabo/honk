@@ -563,3 +563,412 @@ For issues:
 - **Other:** Counts >10 are flagged
 
 Adjust with `--threshold` flag.
+
+---
+
+## Background Monitoring with Daemon
+
+For continuous PTY monitoring, use the daemon mode to run a background service that scans and caches PTY data.
+
+### Starting the Daemon
+
+Start the daemon in the background:
+
+```bash
+honk watchdog pty daemon --start
+```
+
+With custom options:
+
+```bash
+# Scan every 60 seconds
+honk watchdog pty daemon --start --scan-interval 60
+
+# Auto-kill processes above 50 PTYs
+honk watchdog pty daemon --start --auto-kill-threshold 50
+
+# Both options combined
+honk watchdog pty daemon --start --scan-interval 30 --auto-kill-threshold 100
+```
+
+**Output:**
+```
+✓ PTY daemon started (PID 12345)
+Scan interval: 30s
+Cache file: tmp/pty-cache.json
+Log file: tmp/pty-daemon.log
+
+View live data: honk watchdog pty observer
+```
+
+### Checking Daemon Status
+
+Check if the daemon is running:
+
+```bash
+honk watchdog pty daemon --status
+```
+
+**Output (running):**
+```
+✓ PTY daemon is running
+  PID: 12345
+  Last scan: 2025-11-19T08:00:00Z
+  Cache age: 5s
+```
+
+**Output (not running):**
+```
+✗ PTY daemon is not running
+  Start it with: honk watchdog pty daemon --start
+```
+
+### Stopping the Daemon
+
+Stop the daemon gracefully:
+
+```bash
+honk watchdog pty daemon --stop
+```
+
+**Output:**
+```
+✓ PTY daemon stopped (PID 12345)
+```
+
+### Daemon Files
+
+The daemon creates several files in the `tmp/` directory:
+
+| File | Purpose |
+|------|---------|
+| `tmp/pty-daemon.pid` | Process ID of running daemon |
+| `tmp/pty-cache.json` | Cached PTY scan results |
+| `tmp/pty-daemon.log` | Daemon activity log |
+
+**Cache File Structure:**
+
+```json
+{
+  "timestamp": "2025-11-19T08:00:00Z",
+  "scan_number": 42,
+  "total_ptys": 247,
+  "process_count": 18,
+  "processes": [
+    {
+      "pid": 12345,
+      "command": "node copilot-agent",
+      "pty_count": 87,
+      "ptys": ["/dev/ttys001", "..."]
+    }
+  ],
+  "heavy_users": [...],
+  "suspected_leaks": [...],
+  "auto_killed": []
+}
+```
+
+### Auto-Kill Feature
+
+Enable auto-kill to automatically terminate processes exceeding a PTY threshold:
+
+```bash
+honk watchdog pty daemon --start --auto-kill-threshold 50
+```
+
+**Safety Rules:**
+- Only kills processes owned by current user
+- Never kills system processes (PID < 1000)
+- Never kills the daemon itself
+- Logs all auto-kill actions
+- Uses process ranking algorithm (see spec)
+
+**Process Ranking Factors:**
+1. PTY count (primary factor)
+2. Process age (newer processes ranked higher)
+3. Known leak patterns (copilot, node)
+4. Orphaned status (no parent)
+5. CPU usage (idle processes first)
+6. Memory usage (tie-breaker)
+
+**Example Log Entry:**
+```
+[2025-11-19T08:00:00Z] Auto-killing PID 12345 (node copilot-agent): 87 PTYs
+[2025-11-19T08:00:01Z] Auto-killed: [12345]
+```
+
+---
+
+## Interactive Dashboard (Observer)
+
+The observer provides a real-time TUI dashboard for viewing cached PTY data.
+
+### Starting the Observer
+
+Launch the observer TUI:
+
+```bash
+honk watchdog pty observer
+```
+
+**Requirements:**
+- Daemon must be running (or cache file must exist)
+- Textual library installed (included by default)
+
+### Observer UI
+
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ PTY Monitor Dashboard                    Last scan: 2s ago     ┃
+┃ Daemon: ● Running (PID 12345)           Scan interval: 30s     ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
+│  │ Total PTYs   │  │ Processes    │  │ Heavy Users  │        │
+│  │    247       │  │      18      │  │       3      │        │
+│  └──────────────┘  └──────────────┘  └──────────────┘        │
+│                                                                 │
+│  Active Processes                                              │
+│  ┌──────┬──────────────────────────┬──────────┐              │
+│  │ PID  │ Command                  │ PTY Count│              │
+│  ├──────┼──────────────────────────┼──────────┤              │
+│  │12345 │ node copilot-agent       │    87    │              │
+│  │12346 │ python honk.py           │    42    │              │
+│  │12347 │ zsh                      │     5    │              │
+│  └──────┴──────────────────────────┴──────────┘              │
+│                                                                 │
+│  [q] Quit  [r] Refresh                                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit observer |
+| `r` | Refresh data immediately |
+| `↑/↓` | Navigate process list (future) |
+
+### Observer Features
+
+**Stats Cards:**
+- Total PTYs in use
+- Number of processes holding PTYs
+- Number of heavy users (>4 PTYs)
+
+**Process Table:**
+- Sorted by PTY count (highest first)
+- Shows PID, command name, PTY count
+- Updates automatically every 5 seconds
+- Limited to top 20 processes
+
+**Status Bar:**
+- Last scan timestamp
+- Scan number
+- Cache freshness indicator
+- Warning if cache is stale
+
+### Disabling Auto-Refresh
+
+Run observer without auto-refresh:
+
+```bash
+honk watchdog pty observer --no-live
+```
+
+Press `r` to manually refresh when needed.
+
+### Custom Cache File
+
+Use a custom cache file location:
+
+```bash
+honk watchdog pty observer --cache-file /path/to/cache.json
+```
+
+---
+
+## Workflows
+
+### Basic Monitoring Workflow
+
+1. Check current PTY usage:
+   ```bash
+   honk watchdog pty show
+   ```
+
+2. If high PTY count, start monitoring:
+   ```bash
+   honk watchdog pty daemon --start
+   ```
+
+3. Open dashboard to watch in real-time:
+   ```bash
+   honk watchdog pty observer
+   ```
+
+4. When done, stop daemon:
+   ```bash
+   honk watchdog pty daemon --stop
+   ```
+
+### Auto-Cleanup Workflow
+
+1. Start daemon with auto-kill enabled:
+   ```bash
+   honk watchdog pty daemon --start --auto-kill-threshold 50
+   ```
+
+2. Monitor the daemon log:
+   ```bash
+   tail -f tmp/pty-daemon.log
+   ```
+
+3. Stop daemon when issue is resolved:
+   ```bash
+   honk watchdog pty daemon --stop
+   ```
+
+### Emergency Cleanup
+
+When PTYs are maxed out and terminal is unresponsive:
+
+1. From another machine (SSH):
+   ```bash
+   honk watchdog pty show --json | jq
+   honk watchdog pty clean --plan
+   honk watchdog pty clean
+   ```
+
+2. Or use the daemon to auto-kill:
+   ```bash
+   honk watchdog pty daemon --start --auto-kill-threshold 30 --scan-interval 10
+   # Wait for auto-cleanup
+   honk watchdog pty daemon --stop
+   ```
+
+---
+
+## Troubleshooting
+
+### Daemon Won't Start
+
+**Problem:** "Daemon already running"
+
+**Solution:**
+```bash
+# Check status
+honk watchdog pty daemon --status
+
+# Force stop old daemon
+honk watchdog pty daemon --stop
+
+# Clean up stale PID file
+rm tmp/pty-daemon.pid
+
+# Start fresh
+honk watchdog pty daemon --start
+```
+
+### Observer Shows "Cache Not Found"
+
+**Problem:** Observer can't find cache file
+
+**Solution:**
+```bash
+# Start daemon first
+honk watchdog pty daemon --start
+
+# Wait a few seconds for first scan
+sleep 5
+
+# Try observer again
+honk watchdog pty observer
+```
+
+### Cache is Stale
+
+**Problem:** "Cache is stale" warning in observer
+
+**Solution:**
+```bash
+# Check daemon status
+honk watchdog pty daemon --status
+
+# If not running, restart it
+honk watchdog pty daemon --start
+
+# Refresh observer
+# Press 'r' in observer UI
+```
+
+### Auto-Kill Not Working
+
+**Problem:** Processes not being killed despite exceeding threshold
+
+**Solution:**
+```bash
+# Check daemon log
+cat tmp/pty-daemon.log
+
+# Verify threshold is set
+honk watchdog pty daemon --stop
+honk watchdog pty daemon --start --auto-kill-threshold 50
+
+# Check for permission issues (can only kill own processes)
+```
+
+---
+
+## Best Practices
+
+### Development Environment
+
+For active development with frequent PTY creation:
+
+```bash
+# Start daemon with moderate auto-kill
+honk watchdog pty daemon --start --scan-interval 30 --auto-kill-threshold 100
+
+# Open observer in separate terminal
+honk watchdog pty observer
+
+# Work as normal, PTYs automatically managed
+```
+
+### Production/CI Environments
+
+For servers or CI runners:
+
+```bash
+# Aggressive auto-kill to prevent resource exhaustion
+honk watchdog pty daemon --start --scan-interval 10 --auto-kill-threshold 30
+
+# Monitor via cron or systemd
+# (see Integration section in spec)
+```
+
+### Debugging PTY Leaks
+
+When investigating the source of PTY leaks:
+
+```bash
+# Use show command repeatedly
+watch -n 5 "honk watchdog pty show --no-color"
+
+# Or use daemon + observer
+honk watchdog pty daemon --start --scan-interval 5
+honk watchdog pty observer
+
+# Identify patterns in process list
+# Check which processes accumulate PTYs over time
+```
+
+---
+
+## Related Documentation
+
+- [PTY Spec](./watchdog-pty-spec.md) - Implementation specification
+- [Honk Spec](../spec.md) - Main project specification
+- [Result Envelope Schema](../../schemas/result.v1.json) - JSON output format
+
