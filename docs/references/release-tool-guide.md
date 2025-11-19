@@ -65,7 +65,7 @@ Add to `pyproject.toml`:
 
 ```toml
 [tool.honk.release]
-# Enable AI changelog generation (requires gh copilot CLI)
+# Enable AI changelog generation (requires GitHub Copilot CLI)
 ai_enabled = true
 
 # Changelog file path
@@ -254,7 +254,7 @@ gh auth login
 
 1. Check Copilot CLI is installed:
    ```bash
-   gh copilot --version
+   copilot --version
    ```
 
 2. Install if needed:

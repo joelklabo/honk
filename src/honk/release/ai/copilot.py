@@ -12,10 +12,10 @@ class CopilotCLI:
         self.available = self._check_available()
     
     def _check_available(self) -> bool:
-        """Check if gh copilot is available."""
+        """Check if GitHub Copilot CLI is available."""
         try:
             result = subprocess.run(
-                ["gh", "copilot", "--version"],
+                ["copilot", "--version"],
                 capture_output=True,
                 timeout=5
             )
@@ -40,5 +40,5 @@ class CopilotCLI:
             raise RuntimeError("GitHub Copilot CLI not available")
         
         # For now, just return a placeholder
-        # Full implementation would call: gh copilot suggest
+        # Full implementation would call: copilot suggest
         return "AI response placeholder - full implementation pending"

@@ -118,7 +118,7 @@ class AIOrganizer:
                     # Standalone CLI: copilot -p "text" --allow-all-tools
                     cmd = [base_cmd, "-p", prompt, "--allow-all-tools"]
                 else:
-                    # Legacy gh extension: gh copilot suggest -t shell
+                    # Legacy copilot CLI mode (if using old extension syntax)
                     # Prompt goes via stdin
                     cmd = [base_cmd] + args
 

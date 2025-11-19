@@ -243,7 +243,7 @@ performance monitoring
 **Problem**: Notes aren't being organized after idle timeout
 
 **Solutions**:
-1. Check GitHub Copilot CLI is installed: `gh copilot --version`
+1. Check GitHub Copilot CLI is installed: `copilot --version`
 2. Verify authentication: `gh auth status`
 3. Try manual organization: Press `Ctrl+O`
 4. Check console for errors
