@@ -7,7 +7,7 @@ import typer
 
 from . import result
 from . import registry
-from .internal.doctor import register_pack, global_pack, run_all_packs
+from .internal.doctor import register_pack, global_pack, pty_pack, run_all_packs, run_pack
 from .auth import ensure_gh_auth, ensure_az_auth
 from .auth.cli import gh_app, az_app
 from .watchdog.pty_cli import pty_app
@@ -42,9 +42,19 @@ app.add_typer(agent_app, name="agent", help="AI agent management") # Added agent
 
 # Register built-in doctor packs
 register_pack(global_pack)
+register_pack(pty_pack)
 
 
-# Global callback to handle --no-color flag
+# Version callback function (executed eagerly)
+def version_callback(value: bool):
+    """Handle --version flag."""
+    if value:
+        print_info("honk version 0.1.0")
+        print_dim("result schema version: 1.0")
+        raise typer.Exit(0)
+
+
+# Global callback to handle --no-color and --version flags
 @app.callback()
 def main_callback(
     no_color: bool = typer.Option(
@@ -52,6 +62,14 @@ def main_callback(
         "--no-color",
         help="Disable colored output",
         envvar="HONK_NO_COLOR",
+    ),
+    version_flag: bool = typer.Option(
+        False,
+        "--version",
+        "-v",
+        help="Show version and exit",
+        callback=version_callback,
+        is_eager=True,
     ),
 ):
     """Honk CLI - Agent-first developer workflows."""
