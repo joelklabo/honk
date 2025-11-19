@@ -6,7 +6,18 @@ import yaml
 
 from honk.ui import console, print_error
 
-list_app = typer.Typer()
+list_app = typer.Typer(
+    invoke_without_command=True,
+    no_args_is_help=False
+)
+
+
+@list_app.callback()
+def list_callback(ctx: typer.Context):
+    """List available agents (defaults to 'agents' subcommand if none specified)."""
+    if ctx.invoked_subcommand is None:
+        # No subcommand specified, invoke agents command with default location
+        ctx.invoke(list_agents, location="project")
 
 
 @list_app.command("agents")
