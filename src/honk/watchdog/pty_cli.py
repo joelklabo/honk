@@ -482,3 +482,41 @@ def daemon(
         else:
             print_error(f"Daemon error: {e}")
         sys.exit(EXIT_SYSTEM)
+
+
+@pty_app.command("observer")
+def observer(
+    live: bool = typer.Option(True, "--live/--no-live", help="Auto-refresh every 5s"),
+    cache_file: str = typer.Option("tmp/pty-cache.json", "--cache-file", help="Path to cache file"),
+):
+    """TUI dashboard displaying cached PTY data."""
+    from pathlib import Path
+    
+    try:
+        # Check if Textual is available
+        from .pty_observer import run_observer
+    except ImportError:
+        print_error("Textual library not installed. Install with: uv add textual")
+        sys.exit(EXIT_PREREQ_FAILED)
+    
+    try:
+        cache_path = Path(cache_file)
+        
+        # Check if cache exists
+        if not cache_path.exists():
+            console.print("[yellow]⚠[/yellow] Cache file not found")
+            console.print(f"  Expected: [dim]{cache_path}[/dim]")
+            console.print("\nStart the daemon first:")
+            console.print("  [bold]honk watchdog pty daemon --start[/bold]")
+            sys.exit(EXIT_PREREQ_FAILED)
+        
+        # Run observer TUI
+        exit_code = run_observer(cache_path)
+        sys.exit(exit_code)
+        
+    except KeyboardInterrupt:
+        print_info("Observer stopped")
+        sys.exit(EXIT_OK)
+    except Exception as e:
+        print_error(f"Observer error: {e}")
+        sys.exit(EXIT_SYSTEM)
