@@ -677,6 +677,17 @@ uv run pytest --cov=src/honk --cov-report=term-missing
 
 *(Add learnings here as you encounter and solve problems)*
 
+#### Issue: --no-color flag doesn't work after subcommand
+**Problem**: `honk demo hello --no-color` gives "No such option" error
+**Solution**: Global flags must come BEFORE subcommands (standard CLI pattern)
+  - ✅ Correct: `honk --no-color demo hello`
+  - ❌ Wrong: `honk demo hello --no-color`
+**Alternative**: Use environment variable: `NO_COLOR=1 honk demo hello`
+**Why**: This is standard CLI behavior (like git, docker, kubectl). Global options always precede subcommands.
+**Reference**: See `tmp/task-23-nocolor-resolution.md` for full analysis
+**When**: Users expect flags to work anywhere on command line
+**Time saved**: ~10 minutes explaining proper CLI syntax
+
 #### Issue: Confusing `gh` with `copilot` CLI tools
 **Solution**: `gh` and `copilot` are DIFFERENT tools. `gh` is GitHub CLI for API operations. `copilot` is standalone AI assistant CLI. Commands like `gh copilot` or `gh copilot --agent` do NOT exist.
 **Reference**: See `docs/references/cli-tools-reference.md` for complete distinction guide
