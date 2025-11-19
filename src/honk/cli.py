@@ -14,6 +14,7 @@ from .watchdog.pty_cli import pty_app
 from .system_cli import system_app
 from .notes.cli import notes_app
 from .tools.agent.cli import agent_app # Added agent_app import
+from .completion import completion_app
 from .ui import console, print_success, print_error, print_info, print_dim
 
 app = typer.Typer(add_completion=False)
@@ -38,6 +39,7 @@ app.add_typer(watchdog_app, name="watchdog", help="System health monitoring")
 app.add_typer(system_app, name="system", help="System diagnostics suite")
 app.add_typer(notes_app, name="notes", help="AI-assisted note-taking 🤖")
 app.add_typer(agent_app, name="agent", help="AI agent management") # Added agent_app to main app
+app.add_typer(completion_app, name="completion", help="Shell completion management")
 
 
 # Register built-in doctor packs

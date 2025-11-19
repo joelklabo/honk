@@ -19,29 +19,43 @@ def test_introspect_includes_all_top_level_commands():
     data = json.loads(result.stdout)
     commands = data["commands"]
     
-    # Get all unique top-level commands (second element in full_path)
+    # Get all unique top-level commands (second element in full_path after "honk")
+    # For direct commands: ["honk", "version"] -> "version"
+    # For sub-app groups: ["honk", "watchdog", ...] -> "watchdog"
     top_level = set()
     for cmd in commands:
         if len(cmd["full_path"]) >= 2:
+            # Extract the command/group name right after "honk"
             top_level.add(cmd["full_path"][1])
     
     # Must include all main commands we know exist
+    # These are ALL at index [1] of full_path after "honk"
     expected_commands = {
-        "version",
-        "info", 
-        "introspect",
-        "help-json",
-        "doctor",
-        "demo",
-        "watchdog",  # Currently missing!
-        "system",    # Currently missing!
-        "auth",      # Currently missing!
-        "notes",     # Currently missing!
-        "agent",     # Currently missing!
-        "release",   # Currently missing!
+        "version",      # Direct command
+        "info",         # Direct command
+        "introspect",   # Direct command
+        "help-json",    # Direct command (with hyphen)
+        "doctor",       # Direct command
+        "demo",         # Sub-app group
+        "watchdog",     # Sub-app group
+        "system",       # Sub-app group
+        "auth",         # Sub-app group
+        "notes",        # Sub-app group
+        "agent",        # Sub-app group
+        "release",      # Sub-app group (added by release module)
     }
     
     missing = expected_commands - top_level
+    
+    # Debug output if test fails
+    if missing:
+        print(f"\nFound top-level commands: {sorted(top_level)}")
+        print(f"Expected: {sorted(expected_commands)}")
+        print(f"Missing: {sorted(missing)}")
+        print(f"\nSample command paths:")
+        for cmd in commands[:5]:
+            print(f"  {cmd['full_path']}")
+    
     assert not missing, f"Missing top-level commands: {missing}"
 
 

@@ -32,8 +32,64 @@ Agent missed `honk watchdog pty` commands during PTY diagnostics session because
 
 ### Phase 1: Critical Fixes (Priority 1)
 
+#### P1.0.1: Debug why direct commands aren't discovered by introspect
+- **Status**: TODO
+- **Type**: Debug/Investigation
+- **Goal**: Understand why version/info/doctor/introspect commands are missing from discovery
+- **Actions**:
+  1. Run debug script: `python3 debug_introspect.py`
+  2. Check stderr output: `honk introspect 2>&1 | head -20`
+  3. Look for debug line: "DEBUG: Discovering from ['honk'], app has X direct commands, Y sub-apps"
+  4. Expected: X should be 5+ (version, info, introspect, help-json, doctor)
+  5. If X=0 or low, timing issue confirmed
+- **Files**: `debug_introspect.py`, `src/honk/internal/command_discovery.py` (line 32)
+- **Reference**: `tmp/P1.1-TEST-FAILURE-FIX.md`
+- **Dependencies**: None
+
+#### P1.0.2: Fix command discovery to capture direct commands on main app
+- **Status**: TODO  
+- **Type**: Implementation
+- **Goal**: Modify discovery to properly find @app.command() decorators on main app
+- **Try these solutions in order**:
+  1. **Option 1**: Force Typer compilation in `introspect()` before discovery
+     ```python
+     _ = app.registered_commands  # Trigger command compilation
+     _ = app.registered_groups    # Trigger group compilation
+     ```
+  2. **Option 2**: Access via Click command object
+     ```python
+     from typer.main import get_command
+     click_app = get_command(app)
+     # Use click_app.commands instead
+     ```
+  3. **Option 3**: Hybrid approach - manual registration + discovery
+     - Keep `_register_builtins()` for direct commands
+     - Use discovery for sub-apps only
+     - Merge both lists in `introspect()`
+- **Test After Each**: `.venv/bin/pytest tests/test_introspect_completeness.py::test_introspect_includes_all_top_level_commands -v`
+- **Files**: `src/honk/cli.py` (introspect function) OR `src/honk/internal/command_discovery.py`
+- **Success**: All 4 tests pass, version/info/doctor/introspect appear in output
+- **Dependencies**: P1.0.1
+
+#### P1.0.3: Verify all introspect tests pass and commit the fix
+- **Status**: TODO
+- **Type**: Verification/Commit
+- **Actions**:
+  1. Run full test suite: `.venv/bin/pytest tests/test_introspect_completeness.py -v`
+  2. Verify all 4 tests pass
+  3. Manual verification:
+     - `honk introspect --json | jq '.commands | length'` → 45+
+     - `honk introspect --json | jq '.commands[] | select(.full_path[1] == "version")'` → exists
+     - `honk introspect | grep -E 'version|info|doctor'` → all appear
+  4. Remove debug output from `command_discovery.py` line 32-33
+  5. Clean up: `rm debug_introspect.py` or move to tmp/
+  6. Commit: `git commit --amend --no-edit` OR new commit with proper message
+  7. Update PLAN.md: Change P1.1 status to DONE
+- **Success**: All tests green, debug removed, committed, P1.1 complete
+- **Dependencies**: P1.0.2
+
 #### P1.1: Fix `honk introspect` to recurse into all Typer sub-apps
-- **Status**: IN_PROGRESS
+- **Status**: MOSTLY DONE - 1 Test Failing (see P1.0.1-P1.0.3 to complete)
 - **File**: `src/honk/cli.py` (introspect command)
 - **Success**: Returns all 12+ top-level commands and nested subcommands
 - **Test**: `honk introspect --json | jq '.commands | length'` should be 40+
@@ -42,7 +98,12 @@ Agent missed `honk watchdog pty` commands during PTY diagnostics session because
   - ✅ Created `src/honk/internal/command_discovery.py` - automatic command discovery
   - ✅ Updated `introspect` command to use `discover_commands_from_app()`
   - ✅ Created test `tests/test_introspect_completeness.py`
-  - ⏳ Need to run tests and verify it works
+  - ✅ Committed to git (commit 63bfb02)
+  - ✅ 3/4 tests passing (45 commands discovered, watchdog/pty commands work)
+  - ❌ 1 test failing - direct commands (version, info, doctor, introspect) not discovered
+  - ⏳ Need to fix discovery of direct commands on main app
+- **Next**: Debug why `app.registered_commands` doesn't include direct commands
+- **Debug file**: `tmp/P1.1-TEST-FAILURE-FIX.md`
 
 #### P1.2: Implement core `honk tree` command with rich output
 - **Status**: TODO

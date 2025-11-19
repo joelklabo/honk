@@ -29,6 +29,10 @@ def discover_commands_from_app(
     
     commands = []
     
+    # Debug: Print what we're discovering (uncomment for debugging)
+    import sys
+    print(f"DEBUG: Discovering from {parent_path}, app has {len(app.registered_commands)} direct commands, {len(app.registered_groups)} sub-apps", file=sys.stderr)
+    
     # Discover direct commands in this app
     for command_info in app.registered_commands:
         cmd_name = command_info.name or ""
