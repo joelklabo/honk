@@ -21,8 +21,8 @@ app = typer.Typer(add_completion=False)
 # Register release tool
 from . import release as release_module
 release_module.register(app)
-auth_app = typer.Typer()
-demo_app = typer.Typer()
+auth_app = typer.Typer(help="Authentication management")
+demo_app = typer.Typer(help="Demo commands showcasing honk features")
 watchdog_app = typer.Typer()
 
 # Add auth sub-apps
