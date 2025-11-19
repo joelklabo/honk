@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "topic": { "type": "string" },
+          "mode": { "type": "string" },
+          "searches_conducted": { "type": "integer" },
+          "time_taken_minutes": { "type": "integer" },
+          "quality_score": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "sources_used": { "type": "integer" },
+          "what_worked": { "type": "array", "items": { "type": "string" } },
+          "what_didnt_work": { "type": "array", "items": { "type": "string" } },
+          "learnings": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "timestamp", "topic", "mode", "quality_score"]
+      }
+    }
+  }
+}

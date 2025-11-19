@@ -17,6 +17,7 @@ from .validate import validate_app
 from .scaffold import scaffold_app
 from .template import template_app
 from .list import list_app
+from .invoke import invoke_agent
 
 agent_app = typer.Typer(
     help="Manage GitHub Copilot CLI custom agents",
@@ -45,3 +46,7 @@ agent_app.add_typer(
     name="template",
     help="Manage agent templates (list, show, add)"
 )
+agent_app.command(
+    name="invoke",
+    help="Invoke agents programmatically from CLI or scripts"
+)(invoke_agent)

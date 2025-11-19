@@ -134,7 +134,18 @@ def introspect(
     json_output: bool = typer.Option(False, "--json/--no-json", help="Output as JSON"),
 ):
     """Emit command catalog with metadata for all commands."""
-    schema = registry.get_introspection_schema()
+    # Import here to avoid circular dependency
+    from .internal.command_discovery import discover_commands_from_app
+    
+    # Automatically discover all commands from the Typer app tree
+    discovered_commands = discover_commands_from_app(app, parent_path=["honk"])
+    
+    # Create schema with discovered commands
+    schema = registry.IntrospectionSchema(
+        version="1.0",
+        commands=discovered_commands
+    )
+    
     if json_output:
         print(schema.model_dump_json(indent=2))
     else:

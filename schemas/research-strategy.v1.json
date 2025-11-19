@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "successful_strategies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern_name": { "type": "string" },
+          "topic_type": { "type": "string" },
+          "success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+          "times_used": { "type": "integer" },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+          "description": { "type": "string" },
+          "example_query": { "type": "string" },
+          "when_to_use": { "type": "string" },
+          "last_validated": { "type": "string", "format": "date-time" }
+        },
+        "required": ["pattern_name", "topic_type", "success_rate", "times_used"]
+      }
+    },
+    "failed_patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern_name": { "type": "string" },
+          "topic_type": { "type": "string" },
+          "failure_rate": { "type": "number" },
+          "times_tried": { "type": "integer" },
+          "why_failed": { "type": "string" },
+          "better_alternative": { "type": "string" }
+        },
+        "required": ["pattern_name", "topic_type", "why_failed"]
+      }
+    }
+  }
+}

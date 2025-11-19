@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "topic_categories": {
+      "type": "object",
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "properties": {
+            "key_insight": { "type": "string" },
+            "best_sources": { "type": "array", "items": { "type": "string" } },
+            "avoid": { "type": "array", "items": { "type": "string" } },
+            "search_template": { "type": "string" },
+            "examples": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "insights": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "topic_category": { "type": "string" },
+          "insight": { "type": "string" },
+          "discovered": { "type": "string", "format": "date-time" },
+          "validated_count": { "type": "integer" },
+          "confidence": { "type": "string" },
+          "source_sessions": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "topic_category", "insight"]
+      }
+    }
+  }
+}

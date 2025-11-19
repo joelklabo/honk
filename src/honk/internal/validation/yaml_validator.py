@@ -40,20 +40,22 @@ class YAMLFrontmatterValidator:
             return ValidationResult(False, [f"File not found: {file_path}"])
 
         content = file_path.read_text()
-        frontmatter_match = re.match(r"^\s*---\s*\n(.*?)\n---\s*\n", content, re.DOTALL)
+        frontmatter_match = re.search(r"^\s*---\s*\n(?P<frontmatter>.*?)\n*---\s*", content, re.DOTALL)
 
         if not frontmatter_match:
             return ValidationResult(False, ["No YAML frontmatter found."])
 
-        frontmatter_str = frontmatter_match.group(1)
+        frontmatter_str = frontmatter_match.group('frontmatter')
         
         try:
             frontmatter_data = yaml.safe_load(frontmatter_str)
+            if frontmatter_data is None: # Handle empty frontmatter block
+                frontmatter_data = {}
         except yaml.YAMLError as e:
             return ValidationResult(False, [f"Invalid YAML in frontmatter: {e}"])
 
         if not isinstance(frontmatter_data, dict):
-            return ValidationResult(False, ["Frontmatter is not a valid YAML object."])
+            return ValidationResult(False, ["Frontmatter is not a valid YAML object (must be a dictionary)."])
 
         try:
             validate(instance=frontmatter_data, schema=self.schema)
