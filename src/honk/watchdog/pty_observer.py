@@ -99,15 +99,9 @@ class PTYObserver(App):
         # Initial load
         self.load_cache()
         
-        # Set up auto-refresh timer (every 5 seconds) - use call_later for async safety
+        # Set up auto-refresh timer (every 5 seconds) using set_interval
         if self.auto_refresh:
-            self.refresh_timer()
-    
-    def refresh_timer(self) -> None:
-        """Schedule next cache refresh."""
-        self.load_cache()
-        if self.auto_refresh:
-            self.call_later(5.0, self.refresh_timer)
+            self.set_interval(5.0, self.load_cache)
     
     def load_cache(self) -> None:
         """Load data from cache file."""

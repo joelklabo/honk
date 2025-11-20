@@ -10,6 +10,7 @@ import typer
 
 from ..result import EXIT_OK, EXIT_PREREQ_FAILED, EXIT_SYSTEM
 from ..ui import console, print_success, print_error, print_info
+from ..version import format_version_banner
 from .pty_scanner import scan_ptys, kill_processes, get_heavy_users, get_suspected_leaks
 from .process_info import get_human_readable_name, get_application_pty_summary
 from ..log import log_event, LOG_FILE_PATH
@@ -468,6 +469,7 @@ def daemon(
                     )
                     print(json.dumps(envelope, indent=2))
                 else:
+                    console.print(f"\n[dim]{format_version_banner()}[/dim]")
                     console.print("\n[green]✓[/green] PTY daemon is running")
                     console.print(f"  PID: [bold]{result['pid']}[/bold]")
                     if result.get("last_scan"):

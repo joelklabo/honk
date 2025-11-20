@@ -8,6 +8,7 @@ import typer
 from . import result
 from . import registry
 from . import release as release_module
+from . import version as version_module
 from .internal.doctor import register_pack, global_pack, pty_pack, run_all_packs
 from .auth import ensure_gh_auth, ensure_az_auth
 from .auth.cli import gh_app, az_app
@@ -51,7 +52,7 @@ register_pack(pty_pack)
 def version_callback(value: bool):
     """Handle --version flag."""
     if value:
-        print_info("honk version 0.1.0")
+        print_info(version_module.format_version_banner())
         print_dim("result schema version: 1.0")
         raise typer.Exit(0)
 
@@ -87,6 +88,8 @@ def version(
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ):
     """Show version information."""
+    version_info = version_module.get_version_info()
+    
     if json_output:
         envelope = result.ResultEnvelope(
             command=["honk", "version"],
@@ -96,7 +99,9 @@ def version(
             run_id="version",
             duration_ms=0,
             facts={
-                "honk_version": "0.1.0",
+                "honk_version": version_info["version"],
+                "commit": version_info["commit"],
+                "commit_date": version_info["commit_date"],
                 "schema_version": "1.0",
             },
         )

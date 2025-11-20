@@ -41,8 +41,42 @@ cat ~/.local/share/uv/tools/honk/uv-receipt.toml
 
 1. **Make changes** to code in `src/honk/`
 2. **Run tests**: `uv run pytest`
-3. **Test immediately**: `honk <command>` (no reinstall needed!)
+3. **Test immediately**: 
+   - With editable install: `honk <command>` (no reinstall!)
+   - Or use: `uv run honk <command>` (always works)
 4. **Commit**: `git commit -m "..."`
+
+### Running CI Tests Locally
+
+Run the **exact same tests** that GitHub Actions runs:
+
+```bash
+./run_ci_tests.sh
+```
+
+This script runs:
+1. `ruff check` - Linting
+2. `mypy` - Type checking  
+3. `pytest` - All tests
+4. Introspection validation
+5. Schema validation
+
+**Ensures local tests match CI before pushing!**
+
+### Version Information
+
+Check which version/commit you're running:
+
+```bash
+# Quick version check
+honk --version
+# Output: honk v0.1.0 (dca38a9) built 2025-11-19
+
+# Full version details
+honk version --json
+```
+
+This helps verify you're running the latest code!
 
 ### Python Environment Rules (MANDATORY)
 
