@@ -83,7 +83,14 @@ def get_application_pty_summary(processes: Dict[int, PTYProcess]) -> List[Dict]:
             - process_count: Number of processes for this app
             - pids: List of PIDs belonging to this app
     """
-    app_usage = defaultdict(lambda: {"total_ptys": 0, "pids": [], "process_count": 0})
+    from typing import TypedDict
+    
+    class AppStats(TypedDict):
+        total_ptys: int
+        pids: list[int]
+        process_count: int
+    
+    app_usage: dict[str, AppStats] = defaultdict(lambda: {"total_ptys": 0, "pids": [], "process_count": 0})  # type: ignore[misc]
     
     for pid, proc in processes.items():
         app_name = get_human_readable_name(pid, proc.command)
@@ -102,7 +109,12 @@ def get_application_pty_summary(processes: Dict[int, PTYProcess]) -> List[Dict]:
         for app_name, stats in app_usage.items()
     ]
     
-    summary.sort(key=lambda x: x["total_ptys"], reverse=True)
+    # Sort by total PTYs (need explicit cast for mypy since dict values are object)
+    def get_pty_count(item: dict[str, object]) -> int:
+        val = item.get("total_ptys") or 0
+        return int(val)  # type: ignore[call-overload]
+    
+    summary.sort(key=get_pty_count, reverse=True)
     return summary
 
 

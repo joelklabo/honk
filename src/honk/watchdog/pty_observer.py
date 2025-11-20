@@ -67,7 +67,7 @@ class PTYObserver(App):
         super().__init__()
         self.cache_file = cache_file
         self.cache_data = None
-        self.auto_refresh = True
+        # Don't set auto_refresh here - it triggers timer before event loop exists!
         
     def compose(self) -> ComposeResult:
         """Create UI components."""
@@ -99,9 +99,9 @@ class PTYObserver(App):
         # Initial load
         self.load_cache()
         
-        # Set up auto-refresh timer (every 5 seconds) using set_interval
-        if self.auto_refresh:
-            self.set_interval(5.0, self.load_cache)
+        # Set up auto-refresh timer (every 5 seconds) 
+        # Now that event loop is running, we can set up the timer
+        self.set_interval(5.0, self.load_cache)
     
     def load_cache(self) -> None:
         """Load data from cache file."""
@@ -111,12 +111,17 @@ class PTYObserver(App):
                 return
             
             # Read cache
-            self.cache_data = json.loads(self.cache_file.read_text())
+            cache_text = self.cache_file.read_text()
+            self.cache_data = json.loads(cache_text) if cache_text else {}
             
-            # Update status
-            timestamp = self.cache_data.get("timestamp", "unknown")
-            scan_num = self.cache_data.get("scan_number", 0)
-            self.update_status(f"✓ Last scan: {timestamp} (#{scan_num})", "success")
+            # Update status (with null checks)
+            if self.cache_data:
+                timestamp = self.cache_data.get("timestamp", "unknown")
+                scan_num = self.cache_data.get("scan_number", 0)
+                self.update_status(f"✓ Last scan: {timestamp} (#{scan_num})", "success")
+            else:
+                self.update_status("⚠ Empty cache file", "warning")
+                return
             
             # Update stats cards
             self.update_stats()
@@ -125,8 +130,10 @@ class PTYObserver(App):
             self.update_table()
             
         except json.JSONDecodeError as e:
+            self.cache_data = None  # Reset to None on error
             self.update_status(f"✗ Invalid cache file: {e}", "error")
         except Exception as e:
+            self.cache_data = None  # Reset to None on error
             self.update_status(f"✗ Error loading cache: {e}", "error")
     
     def update_status(self, text: str, status_type: str = "info") -> None:
@@ -186,7 +193,7 @@ class PTYObserver(App):
         self.load_cache()
         self.update_status("Refreshed", "success")
     
-    def action_quit(self) -> None:
+    async def action_quit(self) -> None:
         """Quit action (Q key)."""
         self.exit()
 

@@ -210,7 +210,8 @@ def clean(
             console.print("\n[bold green]Cleaning PTY leaks[/bold green]\n")
             for item in killed_list:
                 status = "✓" if item["success"] else "✗"
-                cmd_name = (item['command'] or "unknown").split('/')[-1].split()[0] if item['command'] else "unknown"
+                command_str = item.get('command') or "unknown"
+                cmd_name = command_str.split('/')[-1].split()[0] if isinstance(command_str, str) else "unknown"
                 parent_info = f" [dim](parent: {item.get('parent_pid')})[/dim]" if item.get('parent_pid') else ""
                 console.print(f"  {status} Killed [bold]{cmd_name}[/bold] (PID {item['pid']}){parent_info} — {item['pty_count']} PTYs")
             console.print()

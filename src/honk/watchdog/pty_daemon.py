@@ -126,6 +126,9 @@ class PTYDaemon:
                 "error": "Daemon not running"
             }
         
+        # Type guard: pid is definitely int here since we checked _is_running returned True
+        assert pid is not None, "PID should not be None after _is_running check"
+        
         try:
             # Send SIGTERM for graceful shutdown
             os.kill(pid, signal.SIGTERM)
