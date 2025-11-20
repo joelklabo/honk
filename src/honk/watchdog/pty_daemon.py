@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 from .pty_scanner import scan_ptys, kill_processes, get_heavy_users, get_suspected_leaks
 

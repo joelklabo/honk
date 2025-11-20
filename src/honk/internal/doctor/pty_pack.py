@@ -1,6 +1,5 @@
 """PTY diagnostics doctor pack."""
 
-import os
 import platform
 import subprocess
 import time
@@ -103,7 +102,7 @@ class PTYDoctorPack:
         if utilization >= 95:
             status = "CRITICAL"
             passed = False
-            remedy = f"Run 'honk doctor fix pty' to clean up PTY leaks"
+            remedy = "Run 'honk doctor fix pty' to clean up PTY leaks"
         elif utilization >= 80:
             status = "WARNING"
             passed = False
@@ -150,7 +149,7 @@ class PTYDoctorPack:
                     name="heavy_users",
                     passed=False,
                     message=f"Heavy PTY users detected: {heavy_user_summary}",
-                    remedy=f"Investigate processes with excessive PTY usage"
+                    remedy="Investigate processes with excessive PTY usage"
                 )
             )
         else:
@@ -181,7 +180,7 @@ class PTYDoctorPack:
                     name="leak_candidates",
                     passed=False,
                     message=f"Suspected PTY leaks: {leak_summary}",
-                    remedy=f"Run 'honk doctor fix pty --auto' to clean up automatically"
+                    remedy="Run 'honk doctor fix pty --auto' to clean up automatically"
                 )
             )
         else:

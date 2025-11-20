@@ -357,7 +357,6 @@ def daemon(
 ):
     """Background PTY monitoring service with caching."""
     from .pty_daemon import PTYDaemon, DaemonConfig
-    from pathlib import Path
     
     config = DaemonConfig(
         scan_interval=scan_interval,
@@ -469,7 +468,7 @@ def daemon(
                     )
                     print(json.dumps(envelope, indent=2))
                 else:
-                    console.print(f"\n[green]✓[/green] PTY daemon is running")
+                    console.print("\n[green]✓[/green] PTY daemon is running")
                     console.print(f"  PID: [bold]{result['pid']}[/bold]")
                     if result.get("last_scan"):
                         console.print(f"  Last scan: [dim]{result['last_scan']}[/dim]")

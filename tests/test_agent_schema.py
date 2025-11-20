@@ -1,6 +1,5 @@
 """Tests for agent.v1.json schema validation."""
 import json
-import pytest
 from pathlib import Path
 
 

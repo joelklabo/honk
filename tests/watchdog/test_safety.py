@@ -1,7 +1,6 @@
 """Tests for safety check utilities."""
 
 import os
-import pytest
 import psutil
 from unittest.mock import Mock, patch
 

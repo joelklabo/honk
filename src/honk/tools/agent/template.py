@@ -1,11 +1,7 @@
 import typer
 from pathlib import Path
-from typing import Optional, List
-import os
-import yaml # Import yaml
 
-from honk.ui import print_success, print_error, print_info, console
-from honk.internal.templates.engine import TemplateEngine
+from honk.ui import print_success, print_error, console
 from honk.internal.validation.yaml_validator import YAMLFrontmatterValidator
 
 template_app = typer.Typer()

@@ -4,7 +4,6 @@ from pathlib import Path
 import json
 
 from honk.cli import app
-from honk.internal.validation.yaml_validator import YAMLFrontmatterValidator
 from honk.tools.agent import scaffold # Import scaffold module
 
 runner = CliRunner()

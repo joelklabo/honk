@@ -3,7 +3,6 @@ import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, asdict
-from jsonschema import validate, ValidationError
 
 @dataclass
 class Strategy:

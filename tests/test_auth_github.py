@@ -2,7 +2,6 @@
 
 import json
 from unittest.mock import Mock, patch
-import pytest
 from typer.testing import CliRunner
 
 from honk.cli import app

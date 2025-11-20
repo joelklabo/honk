@@ -220,7 +220,6 @@ tools:
         """Should fail gracefully when .github/agents directory doesn't exist."""
         # Arrange - Remove agent directory
         import shutil
-        import os
         
         agent_dir = Path(".github/agents")
         if agent_dir.exists():

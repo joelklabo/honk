@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 import os
 
 from honk.ui import print_success, print_error, print_info, console
@@ -182,7 +182,7 @@ You have access to the following tools: ${TOOLS}
     temp_file.unlink() # Clean up temporary file
 
     if not validation_result.valid:
-        print_error(f"Generated agent content is invalid:")
+        print_error("Generated agent content is invalid:")
         for error in validation_result.errors:
             console.print(f"  [error]Error:[/error] {error}")
         raise typer.Exit(1)
@@ -190,14 +190,14 @@ You have access to the following tools: ${TOOLS}
     # Write the agent file
     agent_file_path.write_text(rendered_content)
     print_success(f"✓ Created agent: {agent_file_path}")
-    print_success(f"✓ Validated YAML schema")
+    print_success("✓ Validated YAML schema")
 
     # Add to git if in project location
     if location == "project":
         try:
             # This assumes git is initialized and .github/agents is tracked
             os.system(f"git add {agent_file_path}")
-            print_success(f"✓ Added to git staging")
+            print_success("✓ Added to git staging")
         except Exception as e:
             print_info(f"Could not add to git staging: {e}")
 

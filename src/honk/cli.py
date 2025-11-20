@@ -7,7 +7,7 @@ import typer
 
 from . import result
 from . import registry
-from .internal.doctor import register_pack, global_pack, pty_pack, run_all_packs, run_pack
+from .internal.doctor import register_pack, global_pack, pty_pack, run_all_packs
 from .auth import ensure_gh_auth, ensure_az_auth
 from .auth.cli import gh_app, az_app
 from .watchdog.pty_cli import pty_app

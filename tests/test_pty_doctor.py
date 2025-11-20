@@ -1,6 +1,5 @@
 """Tests for PTY doctor pack."""
 
-import pytest
 from honk.internal.doctor import pty_pack, get_pack, run_pack
 
 

@@ -1,7 +1,6 @@
 """Tests for PTY observer TUI."""
 
 import json
-from pathlib import Path
 
 
 def test_observer_cache_file_format(tmp_path):

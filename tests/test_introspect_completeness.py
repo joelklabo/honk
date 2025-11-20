@@ -52,7 +52,7 @@ def test_introspect_includes_all_top_level_commands():
         print(f"\nFound top-level commands: {sorted(top_level)}")
         print(f"Expected: {sorted(expected_commands)}")
         print(f"Missing: {sorted(missing)}")
-        print(f"\nSample command paths:")
+        print("\nSample command paths:")
         for cmd in commands[:5]:
             print(f"  {cmd['full_path']}")
     
