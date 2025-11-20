@@ -1,7 +1,10 @@
 """Safety check utilities for PTY process management."""
 
 import os
+from typing import Tuple
 import psutil
+
+from .pty_scanner import PTYProcess
 
 
 def has_controlling_terminal(pid: int) -> bool:
@@ -153,3 +156,61 @@ def is_system_critical(pid: int) -> bool:
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         # Fail-safe: if we can't check, assume it's critical
         return True
+
+
+def is_safe_to_kill(pid: int, proc: PTYProcess, threshold: int = 4) -> Tuple[bool, str]:
+    """
+    Master safety check - determines if process can be safely killed.
+    
+    Applies multiple layers of safety checks before allowing process termination.
+    When in doubt, DON'T kill (false negatives better than false positives).
+    
+    Args:
+        pid: Process ID to check
+        proc: PTYProcess object with process details
+        threshold: Base PTY threshold for leak detection
+        
+    Returns:
+        Tuple of (safe, reason):
+            - safe: True if process can be killed, False if protected
+            - reason: Human-readable explanation of decision
+    """
+    # Level 1: Absolute Safety Rules (NEVER KILL)
+    
+    if pid == os.getpid():
+        return (False, "Cannot kill own process")
+    
+    if is_in_own_tree(pid):
+        return (False, "Process is in our ancestor chain (would kill ourselves)")
+    
+    if has_controlling_terminal(pid):
+        return (False, "Has active controlling terminal (active user session)")
+    
+    if is_system_critical(pid):
+        return (False, "Critical system process")
+    
+    # Level 2: Positive Indicators (SHOULD KILL)
+    
+    if is_zombie(pid):
+        return (True, "Zombie process (needs reaping)")
+    
+    if is_orphan(pid) and proc.pty_count > 1:
+        return (True, f"Orphan process with {proc.pty_count} PTYs (leak)")
+    
+    # Level 3: Context-Specific Rules
+    
+    cmd = (proc.command or "").lower()
+    
+    # Copilot/Node processes: More lenient threshold
+    if "copilot" in cmd:
+        if proc.pty_count > 10:
+            return (True, f"Copilot process with excessive PTYs ({proc.pty_count}/10)")
+        else:
+            return (False, f"Copilot process within normal range ({proc.pty_count}/10 PTYs)")
+    
+    # General heavy user threshold
+    if proc.pty_count > (threshold * 2):  # 8+ PTYs default
+        return (True, f"Heavy PTY user ({proc.pty_count} PTYs, threshold {threshold * 2})")
+    
+    # Default: Don't kill
+    return (False, f"Below threshold ({proc.pty_count}/{threshold * 2} PTYs)")

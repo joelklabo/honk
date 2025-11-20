@@ -11,7 +11,9 @@ from honk.watchdog.safety import (
     is_orphan,
     is_in_own_tree,
     is_system_critical,
+    is_safe_to_kill,
 )
+from honk.watchdog.pty_scanner import PTYProcess
 
 
 class TestHasControllingTerminal:
@@ -230,3 +232,180 @@ class TestIsSystemCritical:
         
         # Fail-safe: assume critical if can't check
         assert is_system_critical(1234) is True
+
+
+class TestIsSafeToKill:
+    """Test master safety check function."""
+    
+    def test_never_kill_own_process(self):
+        """Never kill our own process."""
+        our_pid = os.getpid()
+        proc = PTYProcess(our_pid, "python", ["/dev/ttys001"] * 20)
+        
+        safe, reason = is_safe_to_kill(our_pid, proc)
+        
+        assert safe is False
+        assert "own process" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_never_kill_ancestor(self, mock_in_tree):
+        """Never kill process in our ancestor chain."""
+        mock_in_tree.return_value = True
+        
+        proc = PTYProcess(1234, "bash", ["/dev/ttys001"] * 20)
+        safe, reason = is_safe_to_kill(1234, proc)
+        
+        assert safe is False
+        assert "ancestor" in reason.lower()
+    
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_never_kill_with_terminal(self, mock_in_tree, mock_has_terminal):
+        """Never kill process with controlling terminal."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = True
+        
+        proc = PTYProcess(1234, "node", ["/dev/ttys001"] * 20)
+        safe, reason = is_safe_to_kill(1234, proc)
+        
+        assert safe is False
+        assert "terminal" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_never_kill_system_critical(self, mock_in_tree, mock_has_terminal, mock_is_critical):
+        """Never kill critical system process."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = True
+        
+        proc = PTYProcess(1, "launchd", ["/dev/ttys001"] * 20)
+        safe, reason = is_safe_to_kill(1, proc)
+        
+        assert safe is False
+        assert "critical" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_zombie')
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_should_kill_zombie(self, mock_in_tree, mock_has_terminal, mock_is_critical, mock_is_zombie):
+        """Should kill zombie processes."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = False
+        mock_is_zombie.return_value = True
+        
+        proc = PTYProcess(1234, "python", ["/dev/ttys001"] * 2)
+        safe, reason = is_safe_to_kill(1234, proc)
+        
+        assert safe is True
+        assert "zombie" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_orphan')
+    @patch('honk.watchdog.safety.is_zombie')
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_should_kill_orphan_with_ptys(
+        self, mock_in_tree, mock_has_terminal, mock_is_critical, mock_is_zombie, mock_is_orphan
+    ):
+        """Should kill orphan process with PTYs."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = False
+        mock_is_zombie.return_value = False
+        mock_is_orphan.return_value = True
+        
+        proc = PTYProcess(1234, "node", ["/dev/ttys001"] * 5)
+        safe, reason = is_safe_to_kill(1234, proc)
+        
+        assert safe is True
+        assert "orphan" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_orphan')
+    @patch('honk.watchdog.safety.is_zombie')
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_copilot_high_pty_count(
+        self, mock_in_tree, mock_has_terminal, mock_is_critical, mock_is_zombie, mock_is_orphan
+    ):
+        """Copilot with > 10 PTYs should be killable."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = False
+        mock_is_zombie.return_value = False
+        mock_is_orphan.return_value = False
+        
+        proc = PTYProcess(1234, "node copilot", [f"/dev/ttys{i:03d}" for i in range(15)])
+        safe, reason = is_safe_to_kill(1234, proc)
+        
+        assert safe is True
+        assert "copilot" in reason.lower()
+        assert "15" in reason
+    
+    @patch('honk.watchdog.safety.is_orphan')
+    @patch('honk.watchdog.safety.is_zombie')
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_copilot_low_pty_count(
+        self, mock_in_tree, mock_has_terminal, mock_is_critical, mock_is_zombie, mock_is_orphan
+    ):
+        """Copilot with <= 10 PTYs should NOT be killed."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = False
+        mock_is_zombie.return_value = False
+        mock_is_orphan.return_value = False
+        
+        proc = PTYProcess(1234, "node copilot", [f"/dev/ttys{i:03d}" for i in range(5)])
+        safe, reason = is_safe_to_kill(1234, proc)
+        
+        assert safe is False
+        assert "copilot" in reason.lower()
+        assert "normal range" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_orphan')
+    @patch('honk.watchdog.safety.is_zombie')
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_general_heavy_user(
+        self, mock_in_tree, mock_has_terminal, mock_is_critical, mock_is_zombie, mock_is_orphan
+    ):
+        """Non-copilot process with > 8 PTYs should be killable."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = False
+        mock_is_zombie.return_value = False
+        mock_is_orphan.return_value = False
+        
+        proc = PTYProcess(1234, "python", [f"/dev/ttys{i:03d}" for i in range(12)])
+        safe, reason = is_safe_to_kill(1234, proc, threshold=4)
+        
+        assert safe is True
+        assert "heavy" in reason.lower()
+    
+    @patch('honk.watchdog.safety.is_orphan')
+    @patch('honk.watchdog.safety.is_zombie')
+    @patch('honk.watchdog.safety.is_system_critical')
+    @patch('honk.watchdog.safety.has_controlling_terminal')
+    @patch('honk.watchdog.safety.is_in_own_tree')
+    def test_below_threshold(
+        self, mock_in_tree, mock_has_terminal, mock_is_critical, mock_is_zombie, mock_is_orphan
+    ):
+        """Process below threshold should NOT be killed."""
+        mock_in_tree.return_value = False
+        mock_has_terminal.return_value = False
+        mock_is_critical.return_value = False
+        mock_is_zombie.return_value = False
+        mock_is_orphan.return_value = False
+        
+        proc = PTYProcess(1234, "bash", [f"/dev/ttys{i:03d}" for i in range(3)])
+        safe, reason = is_safe_to_kill(1234, proc, threshold=4)
+        
+        assert safe is False
+        assert "below threshold" in reason.lower()
