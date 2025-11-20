@@ -6,6 +6,12 @@ import signal
 from typing import Dict, List
 from dataclasses import dataclass
 
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+
 
 @dataclass
 class PTYProcess:
@@ -75,22 +81,37 @@ def scan_ptys() -> Dict[int, PTYProcess]:
 
 
 def is_leak_candidate(proc: PTYProcess, threshold: int = 4) -> bool:
-    """Determine if process is a leak candidate."""
+    """Determine if process is a leak candidate.
+    
+    SAFETY: Never kill processes that have an active controlling TTY.
+    This prevents killing active Copilot CLI sessions.
+    """
     if not proc.command:
         return False
     
+    # SAFETY CHECK: If process has a controlling TTY, it's active - don't kill it
+    # Active sessions will have stdin/stdout connected to a terminal
+    if HAS_PSUTIL:
+        try:
+            p = psutil.Process(proc.pid)
+            # Check if process has a controlling terminal
+            if p.terminal():
+                return False  # Active session - DO NOT KILL
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass  # If we can't check, fall through to other heuristics
+    
     cmd = proc.command.lower()
     
-    # Heuristic: copilot-like processes
+    # Raise threshold significantly for copilot processes (they legitimately use many PTYs)
     if "copilot" in cmd:
-        return proc.pty_count > threshold
+        return proc.pty_count > threshold * 5  # 20+ PTYs for copilot (was 4)
     if "node" in cmd and "copilot" in cmd:
-        return proc.pty_count > threshold
+        return proc.pty_count > threshold * 5  # 20+ PTYs
     if "agent" in cmd and "copilot" in cmd:
-        return proc.pty_count > threshold
+        return proc.pty_count > threshold * 5  # 20+ PTYs
     
-    # Heavy users (fallback)
-    return proc.pty_count > threshold * 2
+    # Heavy users (fallback) - more conservative
+    return proc.pty_count > threshold * 3  # 12+ PTYs (was 8)
 
 
 def kill_processes(pids: List[int]) -> Dict[int, bool]:

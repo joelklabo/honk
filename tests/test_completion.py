@@ -70,3 +70,43 @@ def test_generated_script_handles_options():
     # Should complete common options
     script = result.stdout
     assert "--json" in script or "options" in script.lower()
+
+
+def test_completion_generate_zsh():
+    """Should generate valid zsh completion script."""
+    result = runner.invoke(app, ["completion", "generate", "zsh"])
+    assert result.exit_code == 0
+    
+    # Check for zsh completion markers
+    assert "#compdef honk" in result.stdout
+    assert "_honk()" in result.stdout
+    assert "_describe" in result.stdout or "_arguments" in result.stdout
+
+
+def test_zsh_completion_uses_introspect():
+    """Should use honk introspect for dynamic command discovery in zsh."""
+    result = runner.invoke(app, ["completion", "generate", "zsh"])
+    assert result.exit_code == 0
+    
+    # Script should call honk introspect
+    assert "honk introspect --json" in result.stdout
+
+
+def test_zsh_completion_handles_subcommands():
+    """Should complete subcommands dynamically in zsh."""
+    result = runner.invoke(app, ["completion", "generate", "zsh"])
+    assert result.exit_code == 0
+    
+    # Should have zsh completion structure
+    script = result.stdout
+    assert "local -a" in script or "_describe" in script
+
+
+def test_completion_install_zsh():
+    """Should provide zsh install instructions."""
+    result = runner.invoke(app, ["completion", "install", "zsh"])
+    assert result.exit_code == 0
+    
+    # Should include zsh-specific instructions
+    assert "zsh" in result.stdout.lower()
+    assert "~/.zshrc" in result.stdout or "fpath" in result.stdout
