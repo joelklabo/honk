@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from jsonschema import validate, ValidationError
 
 @dataclass
@@ -19,7 +19,7 @@ class ResearchSession:
     what_worked: List[str]
     what_didnt_work: List[str]
     learnings: List[str]
-    metadata: Dict[str, Any] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)  # type: ignore[assignment]
 
     def __post_init__(self):
         if self.metadata is None:

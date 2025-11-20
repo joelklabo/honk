@@ -128,7 +128,7 @@ def invoke_agent(
             print_text_result(envelope)
         
         # Exit with appropriate code
-        raise typer.Exit(envelope.code)
+        raise typer.Exit(envelope.code)  # type: ignore[arg-type]
         
     except TimeoutError:
         console.print("[red]Error:[/red] Agent execution timed out")
@@ -158,8 +158,8 @@ def load_agent_definition(agent_path: Path) -> dict:
     from honk.tools.agent.validate import YAMLFrontmatterValidator
     
     content = agent_path.read_text()
-    validator = YAMLFrontmatterValidator()
-    result = validator.validate(content)
+    validator = YAMLFrontmatterValidator()  # type: ignore[call-arg]
+    result = validator.validate(content)  # type: ignore[attr-defined]
     
     if not result.valid:
         console.print("[red]Error:[/red] Invalid agent definition:")
@@ -237,7 +237,7 @@ def print_text_result(envelope: ResultEnvelope) -> None:
     if envelope.links:
         console.print("\n[bold]Learn More:[/bold]")
         for link in envelope.links:
-            console.print(f"  • {link.title}: {link.href}")
+            console.print(f"  • {link.title}: {link.href}")  # type: ignore[attr-defined]
     
     # Next steps
     if envelope.next:
@@ -268,7 +268,7 @@ def print_markdown_result(envelope: ResultEnvelope) -> None:
     if envelope.links:
         md += "\n## Learn More\n\n"
         for link in envelope.links:
-            md += f"- [{link.title}]({link.href})\n"
+            md += f"- [{link.title}]({link.href})\n"  # type: ignore[attr-defined]
     
     if envelope.next:
         md += "\n## Next Steps\n\n"

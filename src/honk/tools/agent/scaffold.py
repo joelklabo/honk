@@ -119,7 +119,7 @@ def create_agent(
         raise typer.Exit(1)
 
     # Prepare context for template rendering
-    tools_list = [t.strip() for t in tools.split(',')] if tools != "*" else ["*"]
+    tools_list = [t.strip() for t in tools.split(',')] if tools and tools != "*" else ["*"]  # type: ignore[union-attr]
     
     tools_yaml_formatted: str
     if tools_list == ["*"]:

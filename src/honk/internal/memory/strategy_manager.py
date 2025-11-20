@@ -104,7 +104,7 @@ class StrategyManager:
                 last_validated=datetime.now()
             )
             new_strategy_dict = asdict(new_strategy)
-            new_strategy_dict['last_validated'] = new_strategy.last_validated.isoformat()
+            new_strategy_dict['last_validated'] = new_strategy.last_validated.isoformat() if new_strategy.last_validated else None  # type: ignore[union-attr]
             data['successful_strategies'].append(new_strategy_dict)
         
         self._write_strategies_data(data)

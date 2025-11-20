@@ -64,13 +64,14 @@ def discover_commands_from_app(
         group_name = group_info.name or ""
         subapp = group_info.typer_instance
         
-        # Recurse with extended path
-        subcommands = discover_commands_from_app(
-            subapp,
-            parent_path=parent_path + [group_name],
-            area=_determine_area(group_name)
-        )
-        commands.extend(subcommands)
+        # Recurse with extended path (check if subapp is not None)
+        if subapp is not None:  # type: ignore[arg-type]
+            subcommands = discover_commands_from_app(
+                subapp,
+                parent_path=parent_path + [group_name],
+                area=_determine_area(group_name)
+            )
+            commands.extend(subcommands)
     
     return commands
 
@@ -83,11 +84,14 @@ def _extract_options(command_info: Any) -> list[CommandOption]:
     options = []
     
     try:
+        # Import click directly
+        import click
+        
         # Access the click command from Typer
         if hasattr(command_info, 'click_command') and command_info.click_command:
             click_cmd = command_info.click_command
             for param in click_cmd.params:
-                if isinstance(param, typer.click.Option):
+                if isinstance(param, click.Option):  # type: ignore[attr-defined]
                     option = CommandOption(
                         names=list(param.opts),
                         type_hint=str(param.type),
@@ -108,16 +112,19 @@ def _extract_arguments(command_info: Any) -> list[CommandArgument]:
     arguments = []
     
     try:
+        # Import click directly
+        import click
+        
         if hasattr(command_info, 'click_command') and command_info.click_command:
             click_cmd = command_info.click_command
             for param in click_cmd.params:
-                if isinstance(param, typer.click.Argument):
+                if isinstance(param, click.Argument):  # type: ignore[attr-defined]
                     argument = CommandArgument(
-                        name=param.name,
+                        name=param.name or "unknown",  # type: ignore[arg-type]
                         type_hint=str(param.type),
                         required=param.required,
                         default=param.default,
-                        help=param.help or "",
+                        help=getattr(param, 'help', '') or "",  # type: ignore[attr-defined]
                     )
                     arguments.append(argument)
     except (AttributeError, Exception):

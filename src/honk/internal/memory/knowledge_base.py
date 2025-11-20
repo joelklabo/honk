@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 @dataclass
 class Insight:
@@ -23,7 +23,7 @@ class TopicGuidance:
     best_sources: List[str]
     avoid: List[str]
     search_template: str
-    examples: List[str] = None
+    examples: List[str] = field(default_factory=list)  # type: ignore[assignment]
 
     def __post_init__(self):
         if self.examples is None:

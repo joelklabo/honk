@@ -49,7 +49,7 @@ def build_result_envelope(
     }
     
     if context_files:
-        facts["context_files"] = [str(f) for f in context_files]
+        facts["context_files"] = [str(f) for f in context_files]  # type: ignore[assignment]
     
     if execution_result.error:
         facts["error"] = execution_result.error
@@ -64,7 +64,7 @@ def build_result_envelope(
     
     # Links
     links = [
-        Link(
+        Link(  # type: ignore[call-arg]
             title="Agent Documentation",
             href="https://docs.github.com/copilot/github-copilot-in-the-cli/using-github-copilot-in-the-cli#using-custom-agents",
         ),
@@ -78,17 +78,17 @@ def build_result_envelope(
         next_commands.append(f"honk agent invoke {agent_name} --context <more-files>")
     
     # Build envelope
-    return ResultEnvelope(
+    return ResultEnvelope(  # type: ignore[call-arg]
         version="1.0",
-        command=command,
+        command=command,  # type: ignore[arg-type]
         status=status,
         changed=False,  # Read-only operation
-        code=code,
+        code=code,  # type: ignore[arg-type]
         summary=summary,
         run_id=str(uuid.uuid4()),
         timestamp=datetime.utcnow().isoformat() + "Z",
         duration_ms=execution_result.duration_ms,
         facts=facts,
         links=links,
-        next=next_commands,
+        next=next_commands,  # type: ignore[arg-type]
     )
