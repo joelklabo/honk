@@ -148,19 +148,19 @@ def create_agent(
         # Create a very basic default template if none specified
         default_template_path = TEMPLATE_BASE_DIR / "default.agent.md"
         if not default_template_path.exists():
-            default_template_path.write_text(f"""---
-name: ${AGENT_NAME}
-description: ${DESCRIPTION}
-target: ${TARGET}
+            default_template_path.write_text("""---
+name: ${{AGENT_NAME}}
+description: ${{DESCRIPTION}}
+target: ${{TARGET}}
 tools:
-${TOOLS}
+${{TOOLS}}
 ---
 
-# ${AGENT_NAME} Agent Instructions
+# ${{AGENT_NAME}} Agent Instructions
 
-You are a custom agent named ${AGENT_NAME}.
-Your purpose is: ${DESCRIPTION}
-You have access to the following tools: ${TOOLS}
+You are a custom agent named ${{AGENT_NAME}}.
+Your purpose is: ${{DESCRIPTION}}
+You have access to the following tools: ${{TOOLS}}
 """)
             
     try:

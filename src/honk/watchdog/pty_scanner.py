@@ -7,7 +7,7 @@ from typing import Dict, List
 from dataclasses import dataclass
 
 try:
-    import psutil
+    import psutil  # noqa: F401
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False

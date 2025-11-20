@@ -82,9 +82,12 @@ class StrategyManager:
                 s['success_rate'] = (s['success_rate'] * (s['times_used'] - 1) + 1) / s['times_used'] # Simple update
                 s['last_validated'] = datetime.now().isoformat()
                 # Update confidence based on success_rate
-                if s['success_rate'] > 0.9: s['confidence'] = 'high'
-                elif s['success_rate'] > 0.6: s['confidence'] = 'medium'
-                else: s['confidence'] = 'low'
+                if s['success_rate'] > 0.9:
+                    s['confidence'] = 'high'
+                elif s['success_rate'] > 0.6:
+                    s['confidence'] = 'medium'
+                else:
+                    s['confidence'] = 'low'
                 strategy_found = True
                 break
         
@@ -192,9 +195,12 @@ class StrategyManager:
                 else:
                     s['success_rate'] = (s['success_rate'] * (s['times_used'] - 1)) / s['times_used']
                 
-                if s['success_rate'] > 0.9: s['confidence'] = 'high'
-                elif s['success_rate'] > 0.6: s['confidence'] = 'medium'
-                else: s['confidence'] = 'low'
+                if s['success_rate'] > 0.9:
+                    s['confidence'] = 'high'
+                elif s['success_rate'] > 0.6:
+                    s['confidence'] = 'medium'
+                else:
+                    s['confidence'] = 'low'
                 s['last_validated'] = datetime.now().isoformat()
                 break
         
