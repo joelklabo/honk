@@ -548,3 +548,74 @@ def observer(
     except Exception as e:
         print_error(f"Observer error: {e}")
         sys.exit(EXIT_SYSTEM)
+
+
+@pty_app.command(name="dashboard")
+def dashboard_cmd(
+    cache_file: str = typer.Option(
+        "tmp/pty-cache.json",
+        "--cache",
+        "-c",
+        help="Path to PTY cache file"
+    ),
+) -> None:
+    """
+    Comprehensive monitoring dashboard showing all PTY tools and usage graphs.
+    
+    Shows:
+    - Status of all PTY tools (daemon, observer, scanner, cleaner)
+    - Real-time PTY usage graph with threshold indicators
+    - Top applications by PTY usage
+    - Historical trend analysis
+    
+    \b
+    Features:
+    - Live auto-refresh every 2 seconds
+    - Visual threshold warnings (70%, 80%, 90%)
+    - Process breakdown by application
+    - Historical usage sparkline
+    
+    \b
+    Keyboard shortcuts:
+    - q: Quit dashboard
+    - r: Manual refresh
+    - c: Show cleanup suggestion
+    
+    \b
+    Example:
+        $ honk watchdog pty dashboard
+        
+        # Use custom cache location
+        $ honk watchdog pty dashboard --cache /path/to/cache.json
+    """
+    from pathlib import Path
+    
+    try:
+        # Check if Textual is available
+        from .pty_dashboard import run_dashboard
+    except ImportError:
+        print_error("Textual library not installed. Install with: uv add textual")
+        sys.exit(EXIT_PREREQ_FAILED)
+    
+    try:
+        cache_path = Path(cache_file)
+        
+        # Check if cache exists
+        if not cache_path.exists():
+            console.print("[yellow]⚠[/yellow] Cache file not found")
+            console.print(f"  Expected: [dim]{cache_path}[/dim]")
+            console.print("\nStart the daemon first:")
+            console.print("  [bold]honk watchdog pty daemon --start[/bold]")
+            console.print("\nOr the dashboard will wait for data...")
+        
+        # Run dashboard TUI
+        exit_code = run_dashboard(cache_path)
+        sys.exit(exit_code)
+        
+    except KeyboardInterrupt:
+        print_info("Dashboard stopped")
+        sys.exit(EXIT_OK)
+    except Exception as e:
+        print_error(f"Dashboard error: {e}")
+        sys.exit(EXIT_SYSTEM)
+
