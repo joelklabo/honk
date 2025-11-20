@@ -12,16 +12,18 @@ from textual.reactive import reactive
 class StatsCard(Static):
     """A card showing a statistic."""
     
-    value: reactive[str] = reactive("")
-    label: reactive[str] = reactive("")
-    
     def __init__(self, label: str, value: str = "0", **kwargs):
         super().__init__(**kwargs)
-        self.label = label
-        self.value = value
+        self._label = label
+        self._value = value
+    
+    def update_value(self, value: str) -> None:
+        """Update the card value and re-render."""
+        self._value = value
+        self.update(f"[bold cyan]{self._label}[/bold cyan]\n[bold white]{self._value}[/bold white]")
     
     def render(self) -> str:
-        return f"[bold cyan]{self.label}[/bold cyan]\n[bold white]{self.value}[/bold white]"
+        return f"[bold cyan]{self._label}[/bold cyan]\n[bold white]{self._value}[/bold white]"
 
 
 class PTYObserver(App):
@@ -156,12 +158,15 @@ class PTYObserver(App):
         
         total_ptys = self.cache_data.get("total_ptys", 0)
         process_count = self.cache_data.get("process_count", 0)
-        heavy_users = len(self.cache_data.get("heavy_users", []))
         
-        # Update cards
-        self.query_one("#total-ptys", StatsCard).value = str(total_ptys)
-        self.query_one("#process-count", StatsCard).value = str(process_count)
-        self.query_one("#heavy-users", StatsCard).value = str(heavy_users)
+        # Count heavy users (processes with 5+ PTYs)
+        processes = self.cache_data.get("processes", [])
+        heavy_users = len([p for p in processes if p.get("pty_count", 0) >= 5])
+        
+        # Update cards using the new update_value method
+        self.query_one("#total-ptys", StatsCard).update_value(str(total_ptys))
+        self.query_one("#process-count", StatsCard).update_value(str(process_count))
+        self.query_one("#heavy-users", StatsCard).update_value(str(heavy_users))
     
     def update_table(self) -> None:
         """Update process table."""
