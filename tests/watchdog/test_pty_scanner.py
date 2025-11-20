@@ -23,6 +23,25 @@ class TestPTYProcess:
             ptys=["/dev/ttys001", "/dev/ttys002", "/dev/ttys003"]
         )
         assert process.pty_count == 3
+    
+    def test_parent_pid_field(self):
+        """Test parent_pid field is optional."""
+        # Without parent_pid (orphan or unknown)
+        proc1 = PTYProcess(
+            pid=1234,
+            command="node",
+            ptys=["/dev/ttys001"]
+        )
+        assert proc1.parent_pid is None
+        
+        # With parent_pid
+        proc2 = PTYProcess(
+            pid=1234,
+            command="node",
+            ptys=["/dev/ttys001"],
+            parent_pid=5678
+        )
+        assert proc2.parent_pid == 5678
 
 
 class TestParseLsofOutput:
@@ -74,6 +93,36 @@ n/dev/ttys003
         """Test parsing empty output."""
         processes = parse_lsof_output("")
         assert len(processes) == 0
+    
+    def test_parse_with_parent_pid(self):
+        """Test parsing lsof output with parent PID (R field)."""
+        output = """p1234
+R5000
+cnode
+n/dev/ttys001
+p5678
+R1
+cpython3
+n/dev/ttys002
+"""
+        processes = parse_lsof_output(output)
+        
+        assert len(processes) == 2
+        
+        # Check parent PIDs
+        assert processes[1234].parent_pid == 5000
+        assert processes[5678].parent_pid == 1  # Orphan (launchd parent)
+    
+    def test_parse_without_parent_pid(self):
+        """Test parsing when parent PID not available."""
+        output = """p1234
+cnode
+n/dev/ttys001
+"""
+        processes = parse_lsof_output(output)
+        
+        # Should have None if no R field
+        assert processes[1234].parent_pid is None
 
 
 class TestScanPtys:

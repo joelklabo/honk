@@ -19,6 +19,7 @@ class PTYProcess:
     pid: int
     command: str | None
     ptys: List[str]
+    parent_pid: int | None = None
     
     @property
     def pty_count(self) -> int:
@@ -37,10 +38,15 @@ def run_lsof() -> str:
             return ""
         
         # Scan only PTY devices to avoid hanging on large systems
+        # -F: parseable output
+        # -p: PID
+        # -c: command name  
+        # -n: file name
+        # -R: parent PID (NEW!)
         # Note: lsof returns exit code 1 when some files can't be accessed,
         # but still outputs what it can, so we use run() instead of check_output()
         result = subprocess.run(
-            ["lsof", "-FpcnT"] + pty_devices,
+            ["lsof", "-FpcnR"] + pty_devices,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True
@@ -62,8 +68,12 @@ def parse_lsof_output(output: str) -> Dict[int, PTYProcess]:
                 processes[current_pid] = PTYProcess(
                     pid=current_pid,
                     command=None,
-                    ptys=[]
+                    ptys=[],
+                    parent_pid=None
                 )
+        elif line.startswith("R"):  # Parent PID
+            if current_pid and current_pid in processes:
+                processes[current_pid].parent_pid = int(line[1:])
         elif line.startswith("c"):  # Command
             if current_pid and current_pid in processes:
                 processes[current_pid].command = line[1:]
