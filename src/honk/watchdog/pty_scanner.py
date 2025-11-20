@@ -91,37 +91,26 @@ def scan_ptys() -> Dict[int, PTYProcess]:
 
 
 def is_leak_candidate(proc: PTYProcess, threshold: int = 4) -> bool:
-    """Determine if process is a leak candidate.
-    
-    SAFETY: Never kill processes that have an active controlling TTY.
-    This prevents killing active Copilot CLI sessions.
     """
-    if not proc.command:
-        return False
+    Determine if process is a leak candidate using comprehensive safety checks.
     
-    # SAFETY CHECK: If process has a controlling TTY, it's active - don't kill it
-    # Active sessions will have stdin/stdout connected to a terminal
-    if HAS_PSUTIL:
-        try:
-            p = psutil.Process(proc.pid)
-            # Check if process has a controlling terminal
-            if p.terminal():
-                return False  # Active session - DO NOT KILL
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass  # If we can't check, fall through to other heuristics
+    Uses the safety framework to make informed decisions with multiple protection layers.
+    When in doubt, DON'T flag as leak (false negatives > false positives).
     
-    cmd = proc.command.lower()
+    Args:
+        proc: PTYProcess object with process details
+        threshold: Base PTY threshold for detection (default: 4)
+        
+    Returns:
+        True if process appears to be leaking PTYs and is safe to kill
+        False if process is protected or below threshold
+    """
+    # Import safety checks (avoid circular import by importing in function)
+    from .safety import is_safe_to_kill
     
-    # Raise threshold significantly for copilot processes (they legitimately use many PTYs)
-    if "copilot" in cmd:
-        return proc.pty_count > threshold * 5  # 20+ PTYs for copilot (was 4)
-    if "node" in cmd and "copilot" in cmd:
-        return proc.pty_count > threshold * 5  # 20+ PTYs
-    if "agent" in cmd and "copilot" in cmd:
-        return proc.pty_count > threshold * 5  # 20+ PTYs
-    
-    # Heavy users (fallback) - more conservative
-    return proc.pty_count > threshold * 3  # 12+ PTYs (was 8)
+    # Use master safety checker - it has all the logic
+    safe, _ = is_safe_to_kill(proc.pid, proc, threshold)
+    return safe
 
 
 def kill_processes(pids: List[int]) -> Dict[int, bool]:

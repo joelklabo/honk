@@ -187,8 +187,18 @@ class TestGetHeavyUsers:
 class TestGetSuspectedLeaks:
     """Test leak detection."""
     
-    def test_detects_copilot_leaks(self):
+    @patch('honk.watchdog.safety.is_safe_to_kill')
+    def test_detects_copilot_leaks(self, mock_is_safe_to_kill):
         """Test detection of Copilot agent leaks."""
+        # Mock safety check to say the copilot process IS safe to kill
+        # (simulating a leak - no terminal, orphaned, etc.)
+        def safety_check(pid, proc, threshold=4):
+            if "copilot" in (proc.command or "").lower() and proc.pty_count >= 8:
+                return (True, "Copilot process with excessive PTYs")
+            return (False, "Below threshold")
+        
+        mock_is_safe_to_kill.side_effect = safety_check
+        
         processes = {
             1234: PTYProcess(1234, "node /usr/local/bin/copilot-agent", 
                            [f"/dev/ttys{i:03d}" for i in range(8)]),
@@ -201,8 +211,12 @@ class TestGetSuspectedLeaks:
         assert leaks[0].pid == 1234
         assert leaks[0].pty_count == 8
     
-    def test_no_false_positives(self):
+    @patch('honk.watchdog.safety.is_safe_to_kill')
+    def test_no_false_positives(self, mock_is_safe_to_kill):
         """Test that normal processes aren't flagged."""
+        # Mock safety check to protect all these processes
+        mock_is_safe_to_kill.return_value = (False, "Protected")
+        
         processes = {
             1234: PTYProcess(1234, "bash", ["/dev/ttys001"]),
             5678: PTYProcess(5678, "vim", ["/dev/ttys002", "/dev/ttys003"]),
