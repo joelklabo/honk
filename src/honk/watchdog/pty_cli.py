@@ -11,6 +11,7 @@ import typer
 from ..result import EXIT_OK, EXIT_PREREQ_FAILED, EXIT_SYSTEM
 from ..ui import console, print_success, print_error, print_info
 from .pty_scanner import scan_ptys, kill_processes, get_heavy_users, get_suspected_leaks
+from .process_info import get_human_readable_name, get_application_pty_summary
 from ..log import log_event, LOG_FILE_PATH
 
 pty_app = typer.Typer(help="PTY session monitoring and cleanup")
@@ -40,14 +41,18 @@ def show(
         total_ptys = sum(p.pty_count for p in processes.values())
         heavy_users = get_heavy_users(processes, threshold=4)
         suspected_leaks = get_suspected_leaks(processes, threshold=4)
+        app_summary = get_application_pty_summary(processes)
         
         facts = {
             "total_ptys": total_ptys,
             "process_count": len(processes),
+            "applications": app_summary,  # NEW: Application-level view
             "heavy_users": [
                 {
                     "pid": p.pid,
                     "command": p.command,
+                    "application": get_human_readable_name(p.pid, p.command),  # NEW: Better name
+                    "parent_pid": p.parent_pid,
                     "pty_count": p.pty_count,
                     "ptys": p.ptys[:5] + (["..."] if p.pty_count > 5 else [])
                 }
@@ -57,6 +62,8 @@ def show(
                 {
                     "pid": p.pid,
                     "command": p.command,
+                    "application": get_human_readable_name(p.pid, p.command),  # NEW: Better name
+                    "parent_pid": p.parent_pid,
                     "pty_count": p.pty_count,
                     "reason": "copilot-like process with >4 PTYs"
                 }
@@ -79,16 +86,29 @@ def show(
             console.print(f"Total PTYs in use: [bold]{total_ptys}[/bold]")
             console.print(f"Processes holding PTYs: [bold]{len(processes)}[/bold]\n")
             
+            # NEW: Show application-level summary
+            if app_summary:
+                console.print("[bold cyan]PTY Usage by Application:[/bold cyan]")
+                for app in app_summary[:10]:  # Top 10
+                    proc_info = f" ({app['process_count']} process{'es' if app['process_count'] > 1 else ''})" if app['process_count'] > 1 else ""
+                    console.print(f"  • [bold]{app['application']}[/bold]: {app['total_ptys']} PTYs{proc_info}")
+                console.print()
+            
             if heavy_users:
                 console.print("[bold yellow]Heavy PTY users (>4 PTYs):[/bold yellow]")
                 for p in heavy_users:
-                    console.print(f"  • PID {p.pid} ({p.command}) — {p.pty_count} PTYs")
+                    # Use improved naming
+                    app_name = get_human_readable_name(p.pid, p.command)
+                    parent_info = f" [dim](parent: {p.parent_pid})[/dim]" if p.parent_pid else ""
+                    console.print(f"  • [bold]{app_name}[/bold] (PID {p.pid}){parent_info} — {p.pty_count} PTYs")
                 console.print()
             
             if suspected_leaks:
                 console.print("[bold red]Suspected Copilot/Node leaks:[/bold red]")
                 for p in suspected_leaks:
-                    console.print(f"  • PID {p.pid} ({p.command}) — {p.pty_count} PTYs")
+                    app_name = get_human_readable_name(p.pid, p.command)
+                    parent_info = f" [dim](parent: {p.parent_pid})[/dim]" if p.parent_pid else ""
+                    console.print(f"  • [bold]{app_name}[/bold] (PID {p.pid}){parent_info} — {p.pty_count} PTYs")
                 console.print()
         
         sys.exit(EXIT_OK)
@@ -138,13 +158,15 @@ def clean(
                     changed=False,
                     code="watchdog.pty.clean.plan",
                     summary=f"Would kill {len(suspected_leaks)} processes",
-                    facts={"would_kill": [{"pid": p.pid, "command": p.command, "pty_count": p.pty_count} for p in suspected_leaks]}
+                    facts={"would_kill": [{"pid": p.pid, "command": p.command, "parent_pid": p.parent_pid, "pty_count": p.pty_count} for p in suspected_leaks]}
                 )
                 print(json.dumps(envelope, indent=2))
             else:
                 console.print("\n[bold yellow]Would kill:[/bold yellow]")
                 for p in suspected_leaks:
-                    console.print(f"  • PID {p.pid} ({p.command}) — {p.pty_count} PTYs")
+                    cmd_name = (p.command or "unknown").split('/')[-1].split()[0] if p.command else "unknown"
+                    parent_info = f" [dim](parent: {p.parent_pid})[/dim]" if p.parent_pid else ""
+                    console.print(f"  • [bold]{cmd_name}[/bold] (PID {p.pid}){parent_info} — {p.pty_count} PTYs")
                 console.print()
             sys.exit(EXIT_OK)
         
@@ -153,7 +175,9 @@ def clean(
             if not json_output:
                 console.print()
             for p in suspected_leaks:
-                if typer.confirm(f"Kill PID {p.pid} ({p.command}) — {p.pty_count} PTYs?"):
+                cmd_name = (p.command or "unknown").split('/')[-1].split()[0] if p.command else "unknown"
+                parent_info = f" (parent: {p.parent_pid})" if p.parent_pid else ""
+                if typer.confirm(f"Kill {cmd_name} (PID {p.pid}){parent_info} — {p.pty_count} PTYs?"):
                     pids_to_kill.append(p.pid)
         else:
             pids_to_kill = [p.pid for p in suspected_leaks]
@@ -169,7 +193,7 @@ def clean(
         total_ptys_after = sum(p.pty_count for p in processes_after.values())
         freed_ptys = total_ptys_before - total_ptys_after
         
-        killed_list = [{"pid": p.pid, "command": p.command, "pty_count": p.pty_count, "success": kill_results.get(p.pid, False)} for p in suspected_leaks if p.pid in pids_to_kill]
+        killed_list = [{"pid": p.pid, "command": p.command, "parent_pid": p.parent_pid, "pty_count": p.pty_count, "success": kill_results.get(p.pid, False)} for p in suspected_leaks if p.pid in pids_to_kill]
         
         if json_output:
             envelope = build_result_envelope(
@@ -185,7 +209,9 @@ def clean(
             console.print("\n[bold green]Cleaning PTY leaks[/bold green]\n")
             for item in killed_list:
                 status = "✓" if item["success"] else "✗"
-                console.print(f"  {status} Killed PID {item['pid']} ({item['command']}) — {item['pty_count']} PTYs")
+                cmd_name = (item['command'] or "unknown").split('/')[-1].split()[0] if item['command'] else "unknown"
+                parent_info = f" [dim](parent: {item.get('parent_pid')})[/dim]" if item.get('parent_pid') else ""
+                console.print(f"  {status} Killed [bold]{cmd_name}[/bold] (PID {item['pid']}){parent_info} — {item['pty_count']} PTYs")
             console.print()
             print_success(f"Freed {freed_ptys} PTYs")
         
@@ -331,7 +357,6 @@ def daemon(
 ):
     """Background PTY monitoring service with caching."""
     from .pty_daemon import PTYDaemon, DaemonConfig
-    from pathlib import Path
     
     config = DaemonConfig(
         scan_interval=scan_interval,
@@ -443,7 +468,7 @@ def daemon(
                     )
                     print(json.dumps(envelope, indent=2))
                 else:
-                    console.print(f"\n[green]✓[/green] PTY daemon is running")
+                    console.print("\n[green]✓[/green] PTY daemon is running")
                     console.print(f"  PID: [bold]{result['pid']}[/bold]")
                     if result.get("last_scan"):
                         console.print(f"  Last scan: [dim]{result['last_scan']}[/dim]")

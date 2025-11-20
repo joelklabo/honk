@@ -1,6 +1,5 @@
 """Tests for bash completion system."""
 
-import json
 from typer.testing import CliRunner
 from honk.cli import app
 

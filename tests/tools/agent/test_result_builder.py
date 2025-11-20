@@ -1,6 +1,4 @@
 """Unit tests for result envelope builder."""
-import pytest
-from pathlib import Path
 
 
 def test_build_result_envelope_success():

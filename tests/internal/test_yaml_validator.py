@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 import json
 
-from honk.internal.validation.yaml_validator import YAMLFrontmatterValidator, ValidationResult
+from honk.internal.validation.yaml_validator import YAMLFrontmatterValidator
 
 @pytest.fixture
 def valid_schema_path(tmp_path) -> Path:

@@ -7,7 +7,7 @@ from typing import Dict, List
 from dataclasses import dataclass
 
 try:
-    import psutil
+    import psutil  # noqa: F401
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
@@ -19,6 +19,7 @@ class PTYProcess:
     pid: int
     command: str | None
     ptys: List[str]
+    parent_pid: int | None = None
     
     @property
     def pty_count(self) -> int:
@@ -37,10 +38,15 @@ def run_lsof() -> str:
             return ""
         
         # Scan only PTY devices to avoid hanging on large systems
+        # -F: parseable output
+        # -p: PID
+        # -c: command name  
+        # -n: file name
+        # -R: parent PID (NEW!)
         # Note: lsof returns exit code 1 when some files can't be accessed,
         # but still outputs what it can, so we use run() instead of check_output()
         result = subprocess.run(
-            ["lsof", "-FpcnT"] + pty_devices,
+            ["lsof", "-FpcnR"] + pty_devices,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True
@@ -62,8 +68,12 @@ def parse_lsof_output(output: str) -> Dict[int, PTYProcess]:
                 processes[current_pid] = PTYProcess(
                     pid=current_pid,
                     command=None,
-                    ptys=[]
+                    ptys=[],
+                    parent_pid=None
                 )
+        elif line.startswith("R"):  # Parent PID
+            if current_pid and current_pid in processes:
+                processes[current_pid].parent_pid = int(line[1:])
         elif line.startswith("c"):  # Command
             if current_pid and current_pid in processes:
                 processes[current_pid].command = line[1:]
@@ -81,37 +91,26 @@ def scan_ptys() -> Dict[int, PTYProcess]:
 
 
 def is_leak_candidate(proc: PTYProcess, threshold: int = 4) -> bool:
-    """Determine if process is a leak candidate.
-    
-    SAFETY: Never kill processes that have an active controlling TTY.
-    This prevents killing active Copilot CLI sessions.
     """
-    if not proc.command:
-        return False
+    Determine if process is a leak candidate using comprehensive safety checks.
     
-    # SAFETY CHECK: If process has a controlling TTY, it's active - don't kill it
-    # Active sessions will have stdin/stdout connected to a terminal
-    if HAS_PSUTIL:
-        try:
-            p = psutil.Process(proc.pid)
-            # Check if process has a controlling terminal
-            if p.terminal():
-                return False  # Active session - DO NOT KILL
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass  # If we can't check, fall through to other heuristics
+    Uses the safety framework to make informed decisions with multiple protection layers.
+    When in doubt, DON'T flag as leak (false negatives > false positives).
     
-    cmd = proc.command.lower()
+    Args:
+        proc: PTYProcess object with process details
+        threshold: Base PTY threshold for detection (default: 4)
+        
+    Returns:
+        True if process appears to be leaking PTYs and is safe to kill
+        False if process is protected or below threshold
+    """
+    # Import safety checks (avoid circular import by importing in function)
+    from .safety import is_safe_to_kill
     
-    # Raise threshold significantly for copilot processes (they legitimately use many PTYs)
-    if "copilot" in cmd:
-        return proc.pty_count > threshold * 5  # 20+ PTYs for copilot (was 4)
-    if "node" in cmd and "copilot" in cmd:
-        return proc.pty_count > threshold * 5  # 20+ PTYs
-    if "agent" in cmd and "copilot" in cmd:
-        return proc.pty_count > threshold * 5  # 20+ PTYs
-    
-    # Heavy users (fallback) - more conservative
-    return proc.pty_count > threshold * 3  # 12+ PTYs (was 8)
+    # Use master safety checker - it has all the logic
+    safe, _ = is_safe_to_kill(proc.pid, proc, threshold)
+    return safe
 
 
 def kill_processes(pids: List[int]) -> Dict[int, bool]:

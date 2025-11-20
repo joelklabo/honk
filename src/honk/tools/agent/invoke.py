@@ -81,7 +81,7 @@ def invoke_agent(
     agent_path = get_agent_path(agent_name)
     if not agent_path.exists():
         console.print(f"[red]Error:[/red] Agent '{agent_name}' not found")
-        console.print(f"[dim]Hint:[/dim] Run 'honk agent list' to see available agents")
+        console.print("[dim]Hint:[/dim] Run 'honk agent list' to see available agents")
         raise typer.Exit(1)
     
     # Validate context files exist

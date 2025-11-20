@@ -1,8 +1,4 @@
 """Unit tests for AgentExecutor."""
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch
-import subprocess
 
 
 def test_build_prompt_basic():

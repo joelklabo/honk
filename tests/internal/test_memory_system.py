@@ -3,9 +3,9 @@ from pathlib import Path
 import json
 from datetime import datetime, timedelta
 
-from honk.internal.memory.session_recorder import SessionRecorder, ResearchSession, SessionStatistics
-from honk.internal.memory.strategy_manager import StrategyManager, Strategy, FailedPattern
-from honk.internal.memory.knowledge_base import KnowledgeBase, Insight, TopicGuidance
+from honk.internal.memory.session_recorder import SessionRecorder, ResearchSession
+from honk.internal.memory.strategy_manager import StrategyManager
+from honk.internal.memory.knowledge_base import KnowledgeBase
 
 @pytest.fixture
 def memory_path(tmp_path) -> Path:

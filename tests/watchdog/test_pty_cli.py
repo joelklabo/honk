@@ -28,7 +28,8 @@ class TestPtyShow:
         assert result.exit_code == 0
         assert "PTY Usage" in result.stdout
         assert "12" in result.stdout  # Total PTYs
-        assert "node" in result.stdout
+        assert "copilot-agent" in result.stdout  # Shows extracted command name
+        assert "1234" in result.stdout  # Shows PID
     
     @patch("honk.watchdog.pty_cli.scan_ptys")
     def test_show_command_json_output(self, mock_scan):

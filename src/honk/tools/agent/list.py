@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 import yaml
 
-from honk.ui import console, print_error
+from honk.ui import console
 
 list_app = typer.Typer(
     invoke_without_command=True,

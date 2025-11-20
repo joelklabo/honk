@@ -23,6 +23,25 @@ class TestPTYProcess:
             ptys=["/dev/ttys001", "/dev/ttys002", "/dev/ttys003"]
         )
         assert process.pty_count == 3
+    
+    def test_parent_pid_field(self):
+        """Test parent_pid field is optional."""
+        # Without parent_pid (orphan or unknown)
+        proc1 = PTYProcess(
+            pid=1234,
+            command="node",
+            ptys=["/dev/ttys001"]
+        )
+        assert proc1.parent_pid is None
+        
+        # With parent_pid
+        proc2 = PTYProcess(
+            pid=1234,
+            command="node",
+            ptys=["/dev/ttys001"],
+            parent_pid=5678
+        )
+        assert proc2.parent_pid == 5678
 
 
 class TestParseLsofOutput:
@@ -74,6 +93,36 @@ n/dev/ttys003
         """Test parsing empty output."""
         processes = parse_lsof_output("")
         assert len(processes) == 0
+    
+    def test_parse_with_parent_pid(self):
+        """Test parsing lsof output with parent PID (R field)."""
+        output = """p1234
+R5000
+cnode
+n/dev/ttys001
+p5678
+R1
+cpython3
+n/dev/ttys002
+"""
+        processes = parse_lsof_output(output)
+        
+        assert len(processes) == 2
+        
+        # Check parent PIDs
+        assert processes[1234].parent_pid == 5000
+        assert processes[5678].parent_pid == 1  # Orphan (launchd parent)
+    
+    def test_parse_without_parent_pid(self):
+        """Test parsing when parent PID not available."""
+        output = """p1234
+cnode
+n/dev/ttys001
+"""
+        processes = parse_lsof_output(output)
+        
+        # Should have None if no R field
+        assert processes[1234].parent_pid is None
 
 
 class TestScanPtys:
@@ -138,8 +187,18 @@ class TestGetHeavyUsers:
 class TestGetSuspectedLeaks:
     """Test leak detection."""
     
-    def test_detects_copilot_leaks(self):
+    @patch('honk.watchdog.safety.is_safe_to_kill')
+    def test_detects_copilot_leaks(self, mock_is_safe_to_kill):
         """Test detection of Copilot agent leaks."""
+        # Mock safety check to say the copilot process IS safe to kill
+        # (simulating a leak - no terminal, orphaned, etc.)
+        def safety_check(pid, proc, threshold=4):
+            if "copilot" in (proc.command or "").lower() and proc.pty_count >= 8:
+                return (True, "Copilot process with excessive PTYs")
+            return (False, "Below threshold")
+        
+        mock_is_safe_to_kill.side_effect = safety_check
+        
         processes = {
             1234: PTYProcess(1234, "node /usr/local/bin/copilot-agent", 
                            [f"/dev/ttys{i:03d}" for i in range(8)]),
@@ -152,8 +211,12 @@ class TestGetSuspectedLeaks:
         assert leaks[0].pid == 1234
         assert leaks[0].pty_count == 8
     
-    def test_no_false_positives(self):
+    @patch('honk.watchdog.safety.is_safe_to_kill')
+    def test_no_false_positives(self, mock_is_safe_to_kill):
         """Test that normal processes aren't flagged."""
+        # Mock safety check to protect all these processes
+        mock_is_safe_to_kill.return_value = (False, "Protected")
+        
         processes = {
             1234: PTYProcess(1234, "bash", ["/dev/ttys001"]),
             5678: PTYProcess(5678, "vim", ["/dev/ttys002", "/dev/ttys003"]),

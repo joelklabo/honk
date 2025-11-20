@@ -1,7 +1,5 @@
 """Tests for PTY daemon functionality."""
 
-import json
-import time
 from pathlib import Path
 from honk.watchdog.pty_daemon import PTYDaemon, DaemonConfig
 

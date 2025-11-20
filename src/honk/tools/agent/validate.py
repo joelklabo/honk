@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from honk.ui import print_success, print_error, print_info, console
 from honk.internal.validation.yaml_validator import YAMLFrontmatterValidator

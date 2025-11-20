@@ -2,8 +2,6 @@
 
 import json
 from pathlib import Path
-from datetime import datetime
-from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal
