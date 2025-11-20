@@ -79,6 +79,29 @@
 - **Authoritative spec:** `docs/spec.md` captures the architecture, pinned dependencies, command documentation expectations, and CI workflows. Update it before making structural changes.
 - **Work tracking:** `docs/plans/main.md` lists the current tasks, decisions, and blockers. Keep it current whenever you ship meaningful changes.
 
+### Quick Setup (For New Clones)
+
+If you're starting with a fresh clone of the repository:
+
+1. **Install uv** (if not already installed):
+   ```bash
+   pip install uv
+   ```
+
+2. **Sync dependencies**:
+   ```bash
+   uv sync                  # Production dependencies
+   uv sync --extra dev      # Include dev dependencies (testing, linting)
+   ```
+
+3. **Verify setup**:
+   ```bash
+   uv run python -m honk.cli --help
+   uv run pytest            # Run tests
+   ```
+
+For complete setup instructions, see [README.md](../README.md).
+
 ### Tech Stack
 
 - Python 3.12.2 managed via uv 0.4.20 (`uv run …` is preferred for every command).
